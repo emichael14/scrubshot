@@ -16,6 +16,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 - Verified locally: `dotnet build` Debug and Release with 0 warnings; `dotnet test` 3/3 passing in MTP mode; the app launched, stayed alive, and Windows registered its tray icon (`HKCU\Control Panel\NotifyIconSettings` entry for `ScrubShot.exe`). Exit through the tray menu was not exercised by automation; owner to click it once.
 - Commits pushed to `origin/milestone-1-capture`. First CI run green (restore, Release build, MTP test, TRX artifact) in 1m33s on windows-latest.
 - Decisions D-021 to D-027 recorded.
+- Later the same day: `CLAUDE.md` gained the autonomy rule for failed checks; `tools/IconBuild` added; original app icon designed (five directions, judged, refined, owner chose the diagonal trio with a three-bubble tray variant) and wired into the app, README and `assets/icon` (D-028). Owner confirmed the tray icon shows and Exit works.
 
 **Blocked or waiting on the owner**
 
