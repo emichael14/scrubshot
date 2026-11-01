@@ -77,6 +77,8 @@ Each step ends with a passing build, passing tests and a focused commit on `mile
 
 9. **Verification, docs, PR.** `CaptureCheck` tool; manual test checklist in `docs/testing/milestone-1-checklist.md`; README updated with real build and run steps; `docs/decisions.md` updated with anything decided along the way; pull request into `main` summarizing what was built, how to test it and the acceptance criteria met.
 
+10. **Contributor license agreement.** Added to this milestone on 2026-11-01 (the spec had it in Milestone 6) so code contributions can open as soon as Milestone 1 merges. Add the CLA text at `docs/CLA.md` with the placeholder entity from D-015, and the CLA Assistant check as a GitHub Actions workflow (`contributor-assistant/github-action`), which stores signatures in the repository rather than a third-party service. Update the README Contributing section when it is live.
+
 ## Key design points
 
 Details and rationale are in `docs/decisions.md` entries D-003 through D-014. In one line each:

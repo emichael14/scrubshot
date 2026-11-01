@@ -103,7 +103,7 @@ Guiding rule from the spec: when in doubt, choose the more private and more conf
 **Decision.** Every source file starts with:
 
 ```
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided; see docs/decisions.md.
 ```
 
@@ -129,3 +129,23 @@ Guiding rule from the spec: when in doubt, choose the more private and more conf
 | Magnifier and crosshair coordinates | on | Spec lists them as toggles; on helps precision. |
 | Exclude clipboard writes from history and cloud sync | on | Protective settings default on. |
 | Debug logging | off | Opt-in only. |
+
+### D-018 CLA Assistant moves from Milestone 6 to Milestone 1
+
+**Decision.** The contributor license agreement and its automated check ship with Milestone 1. Preferred implementation is the CLA Assistant GitHub Action (`contributor-assistant/github-action`), which keeps signatures in the repository; the hosted cla-assistant.io service is the fallback if the action proves awkward.
+
+**Why.** Owner request. The repo is public from day one and the README invites bug reports and ideas now; code contributions should open as early as possible without giving up dual-licensing rights, and that requires the CLA to exist before the first external pull request.
+
+### D-019 Public claims are framed as commitments until they are implemented and tested
+
+**Decision.** The README states privacy and admin-policy behaviors as design commitments and says so explicitly, and carries a Limitations section (detection is a safety net, OCR can miss or misread, review before sharing, not a replacement for DLP). As each behavior ships with tests, the wording moves from intent to verified fact. The README stays plain and impersonal: no author material and nothing about how the project is built.
+
+**Why.** Owner request. Overstating protection in a security tool is worse than understating it; users and security teams need to know what is verified today.
+
+### D-020 License is GPL-3.0-only, not GPL-3.0-or-later
+
+**Decision.** The project is licensed under GPL-3.0-only. SPDX identifier `GPL-3.0-only` in source headers (D-015 updated), README and package metadata. The `LICENSE` file is the unmodified GPLv3 text, which is the same for either variant.
+
+**Why.** Owner decision on 2026-11-01. Terms stay fixed to GPLv3 as written rather than deferring to future license versions. With the CLA granting the owner relicensing rights, "or later" adds no flexibility the project needs.
+
+**Considered.** GPL-3.0-or-later: slightly broader compatibility with future GPL versions, at the cost of binding to terms not yet written.
