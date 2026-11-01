@@ -4,7 +4,10 @@ ScrubShot is a free, open-source Windows screenshot tool (C#, .NET 10, WinUI 3) 
 
 ## Start of every session
 
-Work through this list first. If a check fails, report it to the owner rather than working around it.
+Work through this list first. If a check fails, decide by this rule:
+
+- **Fix it yourself and report what you did** when the issue is routine, reversible dev tooling: package feeds (nuget.org only), project templates, SDK workloads, local build configuration.
+- **Stop and ask the owner first** for anything that needs admin rights, changes system or security settings, installs software outside the dev toolchain, touches anything outside `C:\Dev`, or adds a package source other than nuget.org.
 
 1. **Read state.** `docs/status.md` (where things stand and what is next), then the current milestone plan in `docs/`, then skim `docs/decisions.md`. Before starting a new milestone, read the whole spec.
 2. **Git.** `git status`, `git branch --show-current`, `git fetch origin`. Never work on `main`. The working branch must not be behind its remote, and the tree should be clean or explained in `docs/status.md`.
