@@ -49,6 +49,15 @@ Work through this list first. If a check fails, decide by this rule:
 - Tags and releases only when the owner asks.
 - Creating new public surfaces (repositories, releases) needs the owner; the permission classifier blocks it from autonomous sessions.
 
+## Review tiers (owner rule, 2026-11-01)
+
+Reviews cost usage; scope them by what the code can leak or break.
+
+- **Full adversarial review** (several lenses, independent refuters per finding) only for privacy- or security-critical code: detection and scrubbing, clipboard handling, logging, anything that writes images or files to disk, settings and policy enforcement, update and network code.
+- **Light review** for everything else: one lens and one refuter, focused on correctness and obvious bugs.
+- **One full review of the whole milestone** before opening the milestone PR.
+- Unsure which tier applies? Ask the owner with AskUserQuestion before launching it.
+
 ## Conventions
 
 - .NET 10 LTS, `net10.0-windows10.0.26100.0`, minimum OS 10.0.19041. Windows App SDK 2.x. Unpackaged and self-contained is the primary deployment; MSIX is secondary.

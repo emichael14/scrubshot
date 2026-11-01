@@ -27,6 +27,17 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 - Merge PR #1 so `main` carries the docs. `milestone-1-capture` already contains those commits (D-024).
 - Right-click the tray icon once and confirm Exit ends the process cleanly (the only path not covered by the automated check).
+**Hardware tests the owner runs before the Milestone 1 PR is merged** (living checklist; steps add to it as they land; the owner does them in one sitting at the end). Build first with `dotnet build ScrubShot.sln -c Release` from the repo root; tool paths below are the Release outputs.
+
+| # | Test | Command | Report back |
+| --- | --- | --- | --- |
+| H1 | Mixed-DPI capture | On the two-monitor setup (one at 125 or 150 percent): `tools\CaptureCheck\bin\Release\net10.0-windows10.0.26100.0\CaptureCheck.exe C:\Dev\scrubshot-hw\h1` | The printed monitor table (bounds, DPI, scale per monitor) and `Virtual screen` line; the pixel size of `composite.png` and each `monitor-N.png` (File Explorer > Properties > Details) compared with each monitor's native resolution; whether the composite shows both screens with no blur, no offset and no black band. |
+| H2 | Cursor size on a secondary monitor | Move the mouse onto the non-primary monitor, then run `...\CaptureCheck.exe C:\Dev\scrubshot-hw\h2 --cursor` | Open `composite.png`: is the cursor present, at the right spot, and the same size as it looks on that monitor? If it looks one size too big or small, say which (D-036 limitation). |
+| H3 | Exit from the tray menu | Run `src\ScrubShot.App\bin\x64\Release\net10.0-windows10.0.26100.0\win-x64\ScrubShot.exe`, right-click the tray icon, click Exit | The process disappears from Task Manager within a second. **Done 2026-11-01 (Debug build).** Repeat once on the final Release build. |
+| H4 | Tray icon on light and dark taskbars | With the app running, switch Settings > Personalization > Colors between light and dark | The three-bubble icon is readable on both. |
+
+Later steps will add: region drag across the DPI boundary, window capture of a window straddling two monitors, full-screen and per-monitor captures at native resolution, repeat last region after a layout change, Print Screen conflict dialog with Snipping Tool and the one-click fix, clipboard-history exclusion (Win+V shows nothing new), and no files on disk unless Save is chosen.
+
 **Next**
 
 1. Milestone 1 step 4: selection overlay (per-monitor topmost Win32 windows showing the dimmed frozen image, region drag with size readout, crosshair, magnifier, keyboard nudge, window-pick mode, last region memory). See `docs/milestone-1-plan.md`.
