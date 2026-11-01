@@ -53,4 +53,26 @@ public static partial class Log
     [LoggerMessage(EventId = 1105, Level = LogLevel.Warning,
         Message = "{Count} setting(s) in the settings document were missing, null or of the wrong type and were reset to defaults.")]
     public static partial void SettingsValuesReset(ILogger logger, int count);
+
+    // 12xx: hotkeys. Actions and conflicts are enums; never the gesture text.
+
+    [LoggerMessage(EventId = 1200, Level = LogLevel.Information,
+        Message = "Hotkeys applied. Registered {Registered}, conflicts {Conflicts}.")]
+    public static partial void HotkeysApplied(ILogger logger, int registered, int conflicts);
+
+    [LoggerMessage(EventId = 1201, Level = LogLevel.Warning,
+        Message = "Hotkey for {Action} not registered: {Conflict} (error {ErrorCode}).")]
+    public static partial void HotkeyConflict(ILogger logger, Core.Hotkeys.HotkeyAction action, Core.Hotkeys.HotkeyConflict conflict, int errorCode);
+
+    [LoggerMessage(EventId = 1202, Level = LogLevel.Debug,
+        Message = "Hotkey pressed: {Action}.")]
+    public static partial void HotkeyPressed(ILogger logger, Core.Hotkeys.HotkeyAction action);
+
+    [LoggerMessage(EventId = 1203, Level = LogLevel.Error,
+        Message = "The hotkey service could not start (error {ErrorCode}).")]
+    public static partial void HotkeyServiceFailed(ILogger logger, int errorCode);
+
+    [LoggerMessage(EventId = 1204, Level = LogLevel.Error,
+        Message = "A hotkey handler threw (HRESULT {HResult}).")]
+    public static partial void HotkeyHandlerFailed(ILogger logger, int hResult);
 }
