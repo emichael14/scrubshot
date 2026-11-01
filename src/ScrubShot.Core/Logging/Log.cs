@@ -75,4 +75,52 @@ public static partial class Log
     [LoggerMessage(EventId = 1204, Level = LogLevel.Error,
         Message = "A hotkey handler threw (HRESULT {HResult}).")]
     public static partial void HotkeyHandlerFailed(ILogger logger, int hResult);
+
+    // 13xx: capture coordination. Modes and outcomes are enums; sizes and timings are numbers. Never pixels or regions.
+
+    [LoggerMessage(EventId = 1300, Level = LogLevel.Debug,
+        Message = "Capture requested: {Mode}.")]
+    public static partial void CaptureRequested(ILogger logger, Core.Coordination.CaptureMode mode);
+
+    [LoggerMessage(EventId = 1301, Level = LogLevel.Information,
+        Message = "Capture request {Mode} dropped: another capture is in progress.")]
+    public static partial void CaptureBusy(ILogger logger, Core.Coordination.CaptureMode mode);
+
+    [LoggerMessage(EventId = 1302, Level = LogLevel.Debug,
+        Message = "Capture {Mode} cancelled.")]
+    public static partial void CaptureCancelled(ILogger logger, Core.Coordination.CaptureMode mode);
+
+    [LoggerMessage(EventId = 1303, Level = LogLevel.Information,
+        Message = "Capture {Mode} completed: {Width}x{Height} in {ElapsedMs} ms.")]
+    public static partial void CaptureCompleted(ILogger logger, Core.Coordination.CaptureMode mode, int width, int height, long elapsedMs);
+
+    [LoggerMessage(EventId = 1304, Level = LogLevel.Error,
+        Message = "Capture {Mode} failed (HRESULT {HResult}).")]
+    public static partial void CaptureFailed(ILogger logger, Core.Coordination.CaptureMode mode, int hResult);
+
+    [LoggerMessage(EventId = 1305, Level = LogLevel.Warning,
+        Message = "Capture of monitor {Index} skipped: the layout has {Count} monitor(s).")]
+    public static partial void CaptureNoMonitor(ILogger logger, int index, int count);
+
+    [LoggerMessage(EventId = 1306, Level = LogLevel.Information,
+        Message = "Repeat last region fell back to region select: no remembered region fits the current layout.")]
+    public static partial void RepeatRegionFellBack(ILogger logger);
+
+    // 14xx: process lifecycle.
+
+    [LoggerMessage(EventId = 1400, Level = LogLevel.Information,
+        Message = "Another ScrubShot instance is running; it was signalled and this one exits.")]
+    public static partial void SecondInstanceExiting(ILogger logger);
+
+    [LoggerMessage(EventId = 1401, Level = LogLevel.Information,
+        Message = "A second launch asked this instance to come forward.")]
+    public static partial void ActivationRequested(ILogger logger);
+
+    [LoggerMessage(EventId = 1402, Level = LogLevel.Information,
+        Message = "Launch-at-startup registration synced: {Result}.")]
+    public static partial void StartupRegistrationSynced(ILogger logger, Core.Lifecycle.StartupSyncResult result);
+
+    [LoggerMessage(EventId = 1403, Level = LogLevel.Warning,
+        Message = "Launch-at-startup registration not applied: {Result} (HRESULT {HResult}).")]
+    public static partial void StartupRegistrationFailed(ILogger logger, Core.Lifecycle.StartupSyncResult result, int hResult);
 }
