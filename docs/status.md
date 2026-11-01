@@ -4,7 +4,9 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 ## 2026-11-01 (session 2)
 
-**Milestone:** 1 (foundation and capture). **Steps 1 (scaffold), 2 (Core settings and policy) and 3 (capture engine) done** on branch `milestone-1-capture`, rebased onto `main` after PR #1 merged.
+**Milestone:** 1 (foundation and capture). **Steps 1 (scaffold), 2 (Core settings and policy), 3 (capture engine) and 4 (selection overlay) done** on branch `milestone-1-capture`, rebased onto `main` after PR #1 merged.
+
+**Step 4 summary (same day, later).** `ScrubShot.Core.Selection`: `RegionSelection` state machine (inclusive rectangles, clamping, nudge, keyboard anchor), `WindowPick`, `LastRegion` (D-038). `ScrubShot.Capture.Overlay`: `OverlaySession` (one topmost GDI window per monitor, dimmed base, bright selection, crosshair, size and coordinate label, 4x magnifier, keyboard-complete input, dedicated STA thread), `WindowFinder` (z-ordered pickable windows via extended frame bounds), `OverlayOptions` and `OverlayResult`. `CaptureCheck --overlay region|window` drives it; a scripted drag, Escape, keyboard-only selection and window pick all returned the expected regions on this machine, and mid-drag screenshots confirmed the rendering. Two input bugs found by the script and fixed: positions are now taken from the mouse message rather than polled, and Shift is read from both thread and physical key state. A CsWin32 marshalling defect in the generated `CreateFont` wrapper is avoided by using `CreateFontIndirect`. 140 tests. Light review (one lens, one refuter) per the new review-tier rule; outcome in Done.
 
 **Step 3 summary (same day, later).** `ScrubShot.Core.Geometry`: `PixelPoint`, `PixelSize`, `PixelRect`, `MonitorInfo`, `MonitorLayout` with virtual-screen, bitmap and monitor-local conversions (D-035). `ScrubShot.Capture`: `MonitorEnumerator` (EnumDisplayMonitors, GetMonitorInfo, GetDpiForMonitor), `IScreenCapturer`, `GdiScreenCapturer` (one top-down DIB section, BitBlt per monitor with CAPTUREBLT, optional cursor), `FrozenScreen` (zeroed on dispose, crop to `CapturedImage`) (D-036). `tools/CaptureCheck` landed early (D-037): on this machine it captured 1920x1080 with the cursor in 51 ms and the PNG matched the live screen. 110 tests, including synthetic mixed-DPI layouts (150 percent laptop beside 100 percent monitor, negative origin, stacked). An adversarial review workflow ran on the step 3 code before commit; its outcome is recorded below in Done.
 
@@ -21,6 +23,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 - Commits pushed to `origin/milestone-1-capture`. First CI run green (restore, Release build, MTP test, TRX artifact) in 1m33s on windows-latest.
 - Decisions D-021 to D-027 recorded.
 - Later the same day: `CLAUDE.md` gained the autonomy rule for failed checks; `tools/IconBuild` added; original app icon designed (five directions, judged, refined, owner chose the diagonal trio with a three-bubble tray variant) and wired into the app, README and `assets/icon` (D-028). Owner confirmed the tray icon shows and Exit works.
+- Step 4 review (light tier, one lens, one refuter): 7 findings confirmed, all fixed before commit: click inside a selected region confirms it; window mode keeps the pointer and routes arrows to re-hit-testing instead of resizing; label font, padding and magnifier zoom scale per monitor DPI; the outcome is set once and late input is ignored; window construction is leak-safe on failure; all windows are shown only once prepared and the dim pass uses a lookup table; click-through windows are never pick candidates.
 - Step 3 review: the adversarial workflow (Win32, memory and privacy, geometry lenses; two refuters per finding) confirmed 15 low-severity items and refuted 3. Fixed before commit: message-only exceptions for calls that do not set a last error, opaque alpha pass, `SelectObject` and `GdiFlush` result checks, PerMonitorV2 thread scope in enumeration and capture, single pointer read in the pixel span, checked buffer sizes, defensive copy of the monitor list, `FrozenScreen` tests on a real DIB section, extra layout fixtures (primary in the middle, symmetric distance, stacked gap). Deferred with a note in D-036: cursor size on a mixed-DPI secondary monitor.
 
 **Blocked or waiting on the owner**
@@ -35,14 +38,17 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 | H2 | Cursor size on a secondary monitor | Move the mouse onto the non-primary monitor, then run `...\CaptureCheck.exe C:\Dev\scrubshot-hw\h2 --cursor` | Open `composite.png`: is the cursor present, at the right spot, and the same size as it looks on that monitor? If it looks one size too big or small, say which (D-036 limitation). |
 | H3 | Exit from the tray menu | Run `src\ScrubShot.App\bin\x64\Release\net10.0-windows10.0.26100.0\win-x64\ScrubShot.exe`, right-click the tray icon, click Exit | The process disappears from Task Manager within a second. **Done 2026-11-01 (Debug build).** Repeat once on the final Release build. |
 | H4 | Tray icon on light and dark taskbars | With the app running, switch Settings > Personalization > Colors between light and dark | The three-bubble icon is readable on both. |
+| H5 | Region drag across the DPI boundary | `...\CaptureCheck.exe C:\Dev\scrubshot-hw\h5 --overlay region`, then drag a rectangle that starts on one monitor and ends on the other; release to confirm | The printed `Region:` line, and whether `selection.png` shows exactly what the bright rectangle showed, with no blur, offset or seam at the boundary. Also: did the dimmed overlay cover both monitors fully, and did the magnifier and label look the right size on each? |
+| H6 | Window pick of a window straddling two monitors | Drag any app window so it spans both monitors, then `...\CaptureCheck.exe C:\Dev\scrubshot-hw\h6 --overlay window`, hover it (it highlights), click | The `Region:` line and whether `selection.png` is that window's full visible frame, crisp on both halves. |
+| H7 | Keyboard-only selection | `...\CaptureCheck.exe C:\Dev\scrubshot-hw\h7 --overlay region`, do not touch the mouse: press Space, then Shift+Right five times and Shift+Down three times, then Enter | `Region:` should be 51x31 at the cursor position. If it is 6x4, Shift is not being detected on real hardware. |
 
 Later steps will add: region drag across the DPI boundary, window capture of a window straddling two monitors, full-screen and per-monitor captures at native resolution, repeat last region after a layout change, Print Screen conflict dialog with Snipping Tool and the one-click fix, clipboard-history exclusion (Win+V shows nothing new), and no files on disk unless Save is chosen.
 
 **Next**
 
-1. Milestone 1 step 4: selection overlay (per-monitor topmost Win32 windows showing the dimmed frozen image, region drag with size readout, crosshair, magnifier, keyboard nudge, window-pick mode, last region memory). See `docs/milestone-1-plan.md`.
-2. Step 5: hotkeys with conflict detection.
-3. Mixed-DPI acceptance: run `tools/CaptureCheck` on the owner's two-monitor setup and compare PNG sizes and known pixels against the live screen.
+1. Milestone 1 step 5: hotkeys (`HotkeyService` on a hidden message window with `RegisterHotKey`, gesture parsing for the settings strings, conflict detection, the Print Screen and Snipping Tool one-click fix, re-registration on settings change). See `docs/milestone-1-plan.md`.
+2. Step 6: tray menu and `CaptureCoordinator` (hotkey to capture to overlay to output), single instance, launch at startup.
+3. Hardware checklist above, run by the owner in one sitting before the PR.
 
 **Spec files (decided by the owner later the same day).** `SPEC.md` in the repo is the public source of truth (public-safe edition of revision v1.1). The unedited spec with owner context is `CLAUDE.local-spec.md`, gitignored.
 
