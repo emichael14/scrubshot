@@ -447,3 +447,7 @@ TestResults/
 # Never commit captured images or local settings
 captures/
 settings.json
+
+# Local-only Claude Code notes and the working copy of the build spec
+CLAUDE.local.md
+.local/
