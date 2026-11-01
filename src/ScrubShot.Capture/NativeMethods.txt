@@ -1,0 +1,7 @@
+// Win32 APIs consumed by ScrubShot.Capture. One name per line; CsWin32 generates the P/Invoke code.
+// Keep this list minimal and grouped by purpose.
+
+// DPI awareness
+GetThreadDpiAwarenessContext
+AreDpiAwarenessContextsEqual
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
