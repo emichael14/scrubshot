@@ -1,0 +1,60 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Please do not attach screenshots or logs that contain real sensitive data.** Use fake values if you need to show a detection problem.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Press Print Screen
+        2. Drag a region across both monitors
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ScrubShot version
+      description: Shown in Settings > General, or in the tray icon tooltip.
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and build
+      placeholder: "Windows 11 24H2, build 26100.1234 (run `winver`)"
+    validations:
+      required: true
+  - type: textarea
+    id: monitors
+    attributes:
+      label: Monitor layout
+      description: Number of monitors, resolution and scaling (for example 1920x1080 at 150% + 2560x1440 at 100%). Capture and overlay bugs usually depend on this.
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install type
+      options:
+        - Installer
+        - Portable
+        - MSIX
+        - Built from source
+  - type: textarea
+    id: log
+    attributes:
+      label: Debug log (optional)
+      description: Turn on debug logging in Settings > Advanced, reproduce the problem, then use "Open log folder" and paste the relevant lines. ScrubShot logs never include captured content, but review before pasting.
+      render: text

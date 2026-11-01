@@ -1,0 +1,37 @@
+name: Detection gap
+description: Something sensitive was not scrubbed, or something harmless was
+title: "[Detection] "
+labels: ["detection"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste real secrets, IDs or personal data here.** Describe the shape of the value or use an obviously fake one (for example `000-00-0000`, `00000000-0000-0000-0000-000000000000`).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of gap
+      options:
+        - Missed (should have been scrubbed, was not)
+        - False positive (harmless text was scrubbed)
+    validations:
+      required: true
+  - type: input
+    id: type
+    attributes:
+      label: Detection type
+      placeholder: "Tenant ID, SSN, AWS access key, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Fake example and surrounding context
+      description: Where did it appear (Azure portal blade, PowerShell output, email, form)? What label was next to it?
+    validations:
+      required: true
+  - type: input
+    id: sensitivity
+    attributes:
+      label: Sensitivity level in use
+      placeholder: "Strict / Balanced / Relaxed / Custom"
