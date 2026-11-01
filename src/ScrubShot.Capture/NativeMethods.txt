@@ -110,3 +110,11 @@ GetShellWindow
 GetClassName
 DwmGetWindowAttribute
 DWMWINDOWATTRIBUTE
+
+// Global hotkeys
+RegisterHotKey
+UnregisterHotKey
+HOT_KEY_MODIFIERS
+WM_HOTKEY
+HWND_MESSAGE
+WIN32_ERROR
