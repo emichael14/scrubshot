@@ -17,20 +17,12 @@
                 </XamlUICommand.IconSource>
             </XamlUICommand>
 
-            <!-- Placeholder tray icon. The final bubble icon arrives in Milestone 6. -->
             <tb:TaskbarIcon
                 x:Key="TrayIcon"
                 ToolTipText="ScrubShot"
+                IconSource="ms-appx:///Assets/scrubshot.ico"
                 ContextMenuMode="PopupMenu"
                 NoLeftClickDelay="True">
-                <tb:TaskbarIcon.IconSource>
-                    <tb:GeneratedIconSource
-                        Text="S"
-                        Foreground="White"
-                        Background="#FF0E9F8E"
-                        FontWeight="Bold"
-                        FontSize="44" />
-                </tb:TaskbarIcon.IconSource>
                 <tb:TaskbarIcon.ContextFlyout>
                     <MenuFlyout>
                         <MenuFlyoutItem Command="{StaticResource ExitCommand}" />

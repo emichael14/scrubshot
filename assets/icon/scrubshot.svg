@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- ScrubShot icon, full variant for 32 px and up. Original artwork: three glossy soap bubbles in the aqua/teal palette. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="gLarge" cx="0.38" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#0E9F8E"/>
+    </radialGradient>
+    <radialGradient id="gMid" cx="0.38" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#CCFBF1"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </radialGradient>
+    <radialGradient id="gSmall" cx="0.38" cy="0.35" r="0.72">
+      <stop offset="0" stop-color="#CCFBF1"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Large bubble, top-left -->
+  <g>
+    <circle cx="90" cy="94" r="78" fill="url(#gLarge)" stroke="#0D4A45" stroke-width="10"/>
+    <!-- pale rim crescent, lower-right, opposite the highlight -->
+    <path d="M 46 142 A 66 66 0 0 0 138 50" fill="none" stroke="#CCFBF1" stroke-width="5" stroke-linecap="round" opacity="0.35"/>
+    <ellipse cx="60" cy="60" rx="22" ry="13" transform="rotate(-40 60 60)" fill="#FFFFFF" opacity="0.92"/>
+  </g>
+
+  <!-- Medium bubble, right, slightly above the straight diagonal -->
+  <g>
+    <circle cx="196" cy="136" r="52" fill="url(#gMid)" stroke="#0D4A45" stroke-width="10"/>
+    <ellipse cx="175" cy="114" rx="14" ry="8" transform="rotate(-40 175 114)" fill="#FFFFFF" opacity="0.92"/>
+  </g>
+
+  <!-- Small bubble, bottom-right, tucked under the medium -->
+  <g>
+    <circle cx="184" cy="210" r="36" fill="url(#gSmall)" stroke="#0D4A45" stroke-width="10"/>
+    <ellipse cx="170" cy="195" rx="10" ry="6" transform="rotate(-40 170 195)" fill="#FFFFFF" opacity="0.95"/>
+  </g>
+</svg>

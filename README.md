@@ -1,5 +1,7 @@
 # ScrubShot
 
+<img src="assets/icon/scrubshot-128.png" width="96" height="96" alt="ScrubShot icon: three glossy aqua soap bubbles" align="right">
+
 <!--
   Demo GIF placeholder. Target: docs/media/demo.gif, about 10 seconds, under 5 MB.
   Show: Print Screen -> drag a region -> aqua scrub outlines appear -> Copy -> paste shows the blurred result.
