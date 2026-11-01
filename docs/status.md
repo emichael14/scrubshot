@@ -14,20 +14,17 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 - Capture: CsWin32 wired through `NativeMethods.txt`; `ProcessDpi.IsPerMonitorV2()` startup check (D-027).
 - App: unpackaged, self-contained WinUI 3, PerMonitorV2 manifest, windowless, placeholder generated tray icon with Exit via H.NotifyIcon.WinUI 2.4.1 on Windows App SDK 2.6.4.
 - Verified locally: `dotnet build` Debug and Release with 0 warnings; `dotnet test` 3/3 passing in MTP mode; the app launched, stayed alive, and Windows registered its tray icon (`HKCU\Control Panel\NotifyIconSettings` entry for `ScrubShot.exe`). Exit through the tray menu was not exercised by automation; owner to click it once.
-- Five commits pushed to `origin/milestone-1-capture`. CI has not run yet at the time of writing; check the Actions tab.
+- Commits pushed to `origin/milestone-1-capture`. First CI run green (restore, Release build, MTP test, TRX artifact) in 1m33s on windows-latest.
 - Decisions D-021 to D-027 recorded.
 
 **Blocked or waiting on the owner**
 
 - Merge PR #1 so `main` carries the docs. `milestone-1-capture` already contains those commits (D-024).
 - Right-click the tray icon once and confirm Exit ends the process cleanly (the only path not covered by the automated check).
-- If CI fails on the first run, the likely causes are the GitHub Actions versions (checkout v7, setup-dotnet v6, upload-artifact v7, taken from each action's latest release) or a NuGet restore quirk on the runner.
-
 **Next**
 
-1. Confirm CI green on `milestone-1-capture`.
-2. Milestone 1 step 2: Core settings and policy (settings records, versioned JSON store with atomic writes, policy resolver with source reporting, file name pattern engine) with unit tests. See `docs/milestone-1-plan.md`.
-3. Step 3: capture engine (`MonitorLayout`, `IScreenCapturer`, `GdiScreenCapturer`, `FrozenScreen`) with synthetic-layout geometry tests.
+1. Milestone 1 step 2: Core settings and policy (settings records, versioned JSON store with atomic writes, policy resolver with source reporting, file name pattern engine) with unit tests. See `docs/milestone-1-plan.md`.
+2. Step 3: capture engine (`MonitorLayout`, `IScreenCapturer`, `GdiScreenCapturer`, `FrozenScreen`) with synthetic-layout geometry tests.
 
 **Environment notes**
 
