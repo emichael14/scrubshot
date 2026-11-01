@@ -5,3 +5,33 @@
 GetThreadDpiAwarenessContext
 AreDpiAwarenessContextsEqual
 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+SetThreadDpiAwarenessContext
+
+// Monitor enumeration
+EnumDisplayMonitors
+GetMonitorInfo
+MONITORINFOEXW
+MONITORINFOF_PRIMARY
+GetDpiForMonitor
+MONITOR_DPI_TYPE
+GetSystemMetrics
+
+// Screen capture (GDI)
+GetDC
+ReleaseDC
+CreateCompatibleDC
+DeleteDC
+CreateDIBSection
+SelectObject
+DeleteObject
+BitBlt
+GdiFlush
+BI_COMPRESSION
+DIB_USAGE
+
+// Cursor compositing
+GetCursorInfo
+CURSORINFO_FLAGS
+GetIconInfo
+DrawIconEx
+DI_FLAGS
