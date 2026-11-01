@@ -37,7 +37,7 @@ These are design commitments as well; the policy layer arrives with Milestone 5.
 
 - **Safe by default.** Default sensitivity is Strict and protective settings default to on, so an unmanaged install is already conservative.
 - **Every setting is designed to be admin-enforceable** through Windows policy at `HKLM\Software\Policies\ScrubShot` and `HKCU\Software\Policies\ScrubShot`, with ADMX/ADML templates, so Intune, Group Policy or any MDM can set and lock it. Precedence: machine policy, then user policy, then user settings, then defaults. Locked settings show a lock icon and are read-only in the UI.
-- **Lockable examples.** Sensitivity level, enabled detection types, custom patterns, review screen forced on, auto-scrub forced on, clipboard monitor and its destination lists, clipboard-history exclusion, update behavior, which add-ons are allowed or pre-installed.
+- **Lockable examples.** Sensitivity level, enabled detection types, the AI detection layer, custom patterns, review screen forced on, auto-scrub forced on, clipboard monitor and its destination lists, clipboard-history exclusion, update behavior, which add-ons are allowed or pre-installed.
 - **Deployment.** Planned: one installer with silent switches, an Intune Win32 package recipe, a portable build and an MSIX package. Updates can be automatic, notify-only or off; admins can force off and deploy versions themselves.
 - **Verifiable network behavior.** Every outbound call will be listed in this README so security teams can confirm there is exactly one and block it if they choose.
 
@@ -49,11 +49,11 @@ These are design commitments as well; the policy layer arrives with Milestone 5.
 
 **Editor.** Crop, resize, rotate, shapes, arrows, freehand, text, speech bubbles, step counters, highlighters, manual blur and pixelate, effects (shadow, border, torn edge). Every annotation stays editable. Full undo and redo.
 
-**Auto-scrub.** Local OCR plus a detector pipeline for personal data, financial data, Microsoft identifiers and secrets, third-party API tokens and credentials. Context labels ("Tenant ID", "Secret", "Key") raise confidence. Sensitivity levels Strict, Balanced, Relaxed and Custom. A side panel lists each scrubbed item with a masked preview and a keep/reveal toggle. Redaction styles: blur, pixelate, solid block, labeled block.
+**Auto-scrub.** Local OCR plus two detection layers over the same text. Layer 1 is rules: patterns and validators for personal data, financial data, Microsoft identifiers and secrets, third-party API tokens and credentials, with context labels ("Tenant ID", "Secret", "Key") raising confidence. Layer 2 is a small local AI model (named-entity and PII recognition, run on the CPU through ONNX Runtime, shipped with the app, on by default, switchable by setting and policy) that catches what rules cannot: person names, street addresses, and secrets with no label or known format. Both layers merge into one set of scrub regions with confidence scores, and sensitivity levels Strict, Balanced, Relaxed and Custom decide what is scrubbed. A side panel lists each scrubbed item with a masked preview and a keep/reveal toggle. Redaction styles: blur, pixelate, solid block, labeled block.
 
 **Clipboard monitor (optional).** Scrubs text based on where you paste, not when you copy. Risky and trusted destination lists, per-type switches, silent/notify/ask behaviors.
 
-**Add-ons (optional, local).** Name and address detection, face detection, QR and barcode detection, file and PDF scrubbing, image metadata stripping.
+**Add-ons (optional, local).** Face detection, QR and barcode detection, file and PDF scrubbing, image metadata stripping.
 
 ## Architecture
 
@@ -80,9 +80,9 @@ Each milestone ends with a working, runnable app, passing tests and an updated R
 
 - [ ] **1. Foundation and capture.** Tray app, hotkeys with conflict detection, frozen overlay, all capture modes, mixed-DPI correctness, copy and save, CLA Assistant setup. ([plan](docs/milestone-1-plan.md))
 - [ ] **2. Post-capture menu and editor.** Customizable menu, full editor toolset, effects, undo/redo, print.
-- [ ] **3. Auto-scrub engine.** OCR, core detectors, context labels, sensitivity levels, side panel, redaction styles, review screen.
+- [ ] **3. Auto-scrub engine.** OCR, rule detectors, context labels, the local AI detection layer (model chosen by benchmark first), sensitivity levels, side panel, redaction styles, review screen.
 - [ ] **4. Clipboard monitor.** Paste-destination detection, risky/trusted lists, per-type switches.
-- [ ] **5. Settings, policy and add-ons.** All settings tabs, ADMX templates, registry policy with locks, add-on framework.
+- [ ] **5. Settings, policy and add-ons.** All settings tabs, ADMX templates, registry policy with locks, add-on framework (faces, QR and barcodes, files and PDFs, metadata).
 - [ ] **6. Packaging and launch.** Installer, silent install, Intune recipe, portable build, code signing, update modes, admin guide, contributing guide.
 
 ## Project documents

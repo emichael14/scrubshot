@@ -18,9 +18,9 @@ Target architecture for the first six milestones. Projects marked *planned* do n
 | `src/ScrubShot.Core` | Shared models, settings schema and JSON store, policy resolution, file naming patterns, capture geometry, logging abstractions. No Windows UI references. | Milestone 1 |
 | `src/ScrubShot.Capture` | Monitor enumeration and DPI handling, `IScreenCapturer` with the GDI implementation, `FrozenScreen`, the Win32 selection overlay, window picker, cursor compositing. Win32 only, no WinUI. | Milestone 1 |
 | `src/ScrubShot.App` | WinUI 3 application: tray icon and menu, hotkey service, capture coordinator, output (clipboard, file, print), post-capture menu, editor, settings window, notifications, update checker. | Milestone 1 onward |
-| `src/ScrubShot.Detection` | OCR wrapper over Windows.Media.Ocr, detector pipeline, all detectors, context-label matching, sensitivity profiles, hit merging. | *planned, Milestone 3* |
+| `src/ScrubShot.Detection` | OCR wrapper over Windows.Media.Ocr, detector pipeline, layer-1 rule detectors, context-label matching, the layer-2 local model runner (ONNX Runtime), hit merging, sensitivity profiles. | *planned, Milestone 3* |
 | `src/ScrubShot.Clipboard` | Clipboard monitor, paste-destination detection (foreground app, browser site), just-in-time text scrubbing and restore. | *planned, Milestone 4* |
-| `src/ScrubShot.AddIns` | Add-on contract, verification (signature or hash), and the add-ons: names and addresses (local NER), faces, QR and barcodes, file and PDF scrubbing, metadata stripping. | *planned, Milestone 5* |
+| `src/ScrubShot.AddIns` | Add-on contract, verification (signature or hash), and the add-ons: faces, QR and barcodes, file and PDF scrubbing, metadata stripping. | *planned, Milestone 5* |
 | `tests/ScrubShot.Tests` | xUnit tests for Core, Capture geometry and Detection, plus the fixture corpus with expected detections and the no-sensitive-data-in-logs test. | Milestone 1 onward |
 | `tools/CaptureCheck` | Console tool that captures all monitors to PNG and prints the monitor table, for pixel-accuracy checks on real hardware. | Milestone 1 |
 | `deploy/` | Installer, Intune Win32 package recipe, ADMX/ADML policy templates, sample config. | *planned, Milestone 6* |
@@ -36,8 +36,10 @@ hotkey or tray
   → selection overlay (region, window, full screen, monitor, repeat last)
   → crop in memory
   → OCR: words with bounding boxes                       (Milestone 3)
-  → detectors run on text and image, in parallel         (Milestone 3)
-  → merge overlapping hits, apply sensitivity profile    (Milestone 3)
+  → layer 1 rules and layer 2 model on the text,
+    visual detectors on the image, in parallel           (Milestone 3)
+  → merge overlapping hits by confidence,
+    apply sensitivity profile                            (Milestone 3)
   → scrub regions → render scrubbed image               (Milestone 3)
   → post-capture action: Copy, Open in Editor, Save, Print
 ```
@@ -46,8 +48,8 @@ Stage notes:
 
 - **Capture** runs first and immediately so the overlay shows exactly what was on screen when the hotkey fired, including open menus and tooltips. The process is PerMonitorV2 DPI aware; every coordinate in the pipeline is a physical pixel.
 - **Overlay** is native Win32, one topmost window per monitor, each drawing its slice of the frozen image 1:1. A shared virtual-screen selection model lets a drag span monitors. The overlay is the only UI on the hot path and contains no XAML.
-- **OCR and detection** run off the UI thread. OCR produces words with boxes; detectors receive both the text (with word positions, so labels on the same line or directly above can be matched) and the image (for visual add-ons such as faces and QR codes).
-- **Merging** collapses overlapping hits, keeps the highest-confidence type, and applies the active sensitivity level (Strict, Balanced, Relaxed, Custom) to decide what is scrubbed by default.
+- **OCR and detection** run off the UI thread. OCR produces words with boxes. Two layers run on that text: layer 1 is the rule detectors (regex, validators, entropy, context labels), layer 2 is a small local named-entity / PII model run through ONNX Runtime on the CPU, there to catch what rules cannot (person names, street addresses, unlabeled secrets). Visual add-ons (faces, QR codes) receive the image. Layer 2 ships with the app, is on by default, and has a setting and a policy (`Scrubbing.AiLayerEnabled`) to turn it off; layer 1 keeps running either way. The model is chosen by a benchmark against the fixture corpus before Milestone 3 (see [milestone-3-notes.md](milestone-3-notes.md), D-029).
+- **Merging** collapses overlapping hits from both layers into one scrub region, keeps the highest-confidence type, and applies the active sensitivity level (Strict, Balanced, Relaxed, Custom) to decide what is scrubbed by default. Strict accepts model hits at a low confidence threshold, Balanced at a higher one, Relaxed only when a rule agrees, Custom per type.
 - **Rendering** produces a new bitmap. The original stays alive only while the editor session is open so the user can toggle individual items; it is disposed when the session ends.
 - **Output** receives only the scrubbed bitmap. Clipboard writes exclude themselves from Windows clipboard history and cloud sync by default.
 
@@ -60,7 +62,9 @@ All detectors, built in or add-on, implement one interface in `ScrubShot.Detecti
 - Candidates are normalized before matching to absorb common OCR confusions (O/0, l/1/I, S/5, B/8) and spacing breaks, and adjacent word boxes are merged when a pattern spans them.
 - Context labels nearby ("Tenant ID", "Client ID", "Secret", "Key", "Token") raise confidence and set the type; this is what tells one GUID from another.
 
-Add-ons use the same interface and are loaded from verified packages. The `docs/detection-catalog.md` file (Milestone 3) lists every type, its method and its sensitivity-level behavior, and is kept in sync with the code.
+The layer-2 model runner implements the same interface: it tokenizes the OCR text, runs one ONNX inference, maps predicted spans back to word boxes, and emits hits with the model's confidence. It is loaded once per process, runs off the UI thread, and receives nothing but the OCR text of the current capture.
+
+Add-ons use the same interface and are loaded from verified packages. The `docs/detection-catalog.md` file (Milestone 3) lists every type, its method, which layer produces it and its sensitivity-level behavior, and is kept in sync with the code.
 
 ## Settings and policy
 

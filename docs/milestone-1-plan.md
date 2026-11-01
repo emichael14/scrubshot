@@ -119,4 +119,8 @@ Details and rationale are in `docs/decisions.md` entries D-003 through D-014. In
 
 ## Out of scope for Milestone 1
 
-Post-capture menu, editor, OCR and detection, clipboard monitor, full Settings tabs, ADMX templates, add-ons, installer, MSIX, code signing, update check, final icon and bubble animation.
+Post-capture menu, editor, OCR and detection, clipboard monitor, full Settings tabs, ADMX templates, add-ons, installer, MSIX, code signing, update check, bubble animation. The icon landed early (D-028).
+
+## Forward notes
+
+- Spec revision v1.1 (2026-11-01, D-029) makes a small local AI model a core detection layer in Milestone 3, with a model benchmark and owner decision before that milestone starts. See `docs/milestone-3-notes.md`. Nothing in Milestone 1 changes, except that the settings model built in step 2 should reserve the `Scrubbing.AiLayerEnabled` setting name so the policy value name is stable from the first release.
