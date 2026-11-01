@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using ScrubShot.Capture;
+using ScrubShot.Capture.Hotkeys;
 using ScrubShot.Core.Logging;
 using ScrubShot.Core.Settings;
 
@@ -24,6 +25,7 @@ public sealed partial class App : Application
     private readonly ISettingsStore _settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultFilePath);
 
     private TaskbarIcon? _trayIcon;
+    private HotkeyService? _hotkeys;
 
     public App()
     {
@@ -61,12 +63,37 @@ public sealed partial class App : Application
 
         _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
         _trayIcon.ForceCreate();
+
+        StartHotkeys();
+    }
+
+    /// <summary>Registers the configured hotkeys. The capture coordinator that acts on them arrives in Milestone 1 step 6.</summary>
+    private void StartHotkeys()
+    {
+        try
+        {
+            _hotkeys = HotkeyService.Start();
+            _hotkeys.Pressed += action => Log.HotkeyPressed(_logger, action);
+            _hotkeys.HandlerFailed += ex => Log.HotkeyHandlerFailed(_logger, ex.HResult);
+            var bindings = _hotkeys.Apply(Settings.Values.Hotkeys);
+            Log.HotkeysApplied(_logger, bindings.Count(b => b.IsRegistered), bindings.Count(b => !b.IsRegistered));
+            foreach (var binding in bindings.Where(b => !b.IsRegistered))
+            {
+                Log.HotkeyConflict(_logger, binding.Action, binding.Conflict, binding.ErrorCode);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.HotkeyServiceFailed(_logger, (ex.InnerException as System.ComponentModel.Win32Exception)?.NativeErrorCode ?? ex.HResult);
+        }
     }
 
     private void Shutdown(int exitCode)
     {
         Log.AppExiting(_logger, exitCode);
 
+        _hotkeys?.Dispose();
+        _hotkeys = null;
         _trayIcon?.Dispose();
         _trayIcon = null;
 
