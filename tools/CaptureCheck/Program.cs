@@ -12,9 +12,33 @@ using Windows.Storage.Streams;
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
     Console.Error.WriteLine("CaptureCheck <outputFolder> [--cursor] [--overlay region|window] [--no-confirm-on-release]");
+    Console.Error.WriteLine("CaptureCheck --hotkeys [seconds]");
     Console.Error.WriteLine("  Prints the monitor table, captures the virtual screen and writes composite.png plus monitor-N.png.");
     Console.Error.WriteLine("  --overlay shows the selection overlay on the capture and writes selection.png for the confirmed region.");
+    Console.Error.WriteLine("  --hotkeys registers the default hotkeys, prints each binding's status and reports presses for the given seconds (default 10).");
     return 2;
+}
+
+if (args[0] == "--hotkeys")
+{
+    // --hotkeys [seconds] [region window fullscreen repeat]: optional gesture overrides for testing on a machine where the defaults are taken.
+    var seconds = args.Length > 1 && int.TryParse(args[1], CultureInfo.InvariantCulture, out var s) ? s : 10;
+    var defaults = new ScrubShot.Core.Settings.HotkeySettings();
+    var settings = args.Length >= 6
+        ? defaults with { Region = args[2], Window = args[3], FullScreen = args[4], RepeatLastRegion = args[5] }
+        : defaults;
+    Console.WriteLine($"Snipping Tool owns Print Screen (Windows switch): {ScrubShot.Core.Hotkeys.SnippingToolPrintScreen.IsEnabled()}");
+    using var hotkeys = ScrubShot.Capture.Hotkeys.HotkeyService.Start();
+    hotkeys.Pressed += action => Console.WriteLine($"Pressed: {action} at {DateTime.Now:HH:mm:ss.fff}");
+    foreach (var binding in hotkeys.Apply(settings))
+    {
+        Console.WriteLine($"{binding.Action,-17} {binding.GestureText,-20} {(binding.IsRegistered ? "registered" : binding.Conflict.ToString())}{(binding.ErrorCode != 0 ? $" (error {binding.ErrorCode})" : string.Empty)}");
+    }
+
+    Console.WriteLine($"Listening for {seconds} s...");
+    await Task.Delay(TimeSpan.FromSeconds(seconds));
+    Console.WriteLine("Done.");
+    return 0;
 }
 
 var outputFolder = Path.GetFullPath(args[0]);
