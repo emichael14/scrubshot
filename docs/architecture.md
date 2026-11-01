@@ -15,9 +15,9 @@ Target architecture for the first six milestones. Projects marked *planned* do n
 
 | Project | Purpose | Status |
 | --- | --- | --- |
-| `src/ScrubShot.Core` | Shared models, settings schema and JSON store, policy resolution, file naming patterns, capture geometry, logging abstractions. No Windows UI references. | Milestone 1 |
-| `src/ScrubShot.Capture` | Monitor enumeration and DPI handling, `IScreenCapturer` with the GDI implementation, `FrozenScreen`, the Win32 selection overlay, window picker, cursor compositing. Win32 only, no WinUI. | Milestone 1 |
-| `src/ScrubShot.App` | WinUI 3 application: tray icon and menu, hotkey service, capture coordinator, output (clipboard, file, print), post-capture menu, editor, settings window, notifications, update checker. | Milestone 1 onward |
+| `src/ScrubShot.Core` | Shared models, settings schema and JSON store, policy resolution, file naming patterns, capture geometry, selection model, hotkey gestures, capture requests, single-instance and launch-at-startup helpers, logging abstractions. No Windows UI references. | Milestone 1 |
+| `src/ScrubShot.Capture` | Monitor enumeration and DPI handling, `IScreenCapturer` with the GDI implementation, `FrozenScreen`, the Win32 selection overlay, window picker, cursor compositing, the global hotkey service, and the `CaptureCoordinator` that runs a request from freeze to the output sink. Win32 only, no WinUI. | Milestone 1 |
+| `src/ScrubShot.App` | WinUI 3 application: tray icon and menu, wiring of hotkeys to the coordinator, output sinks (clipboard, file, print), post-capture menu, editor, settings window, notifications, update checker. | Milestone 1 onward |
 | `src/ScrubShot.Detection` | OCR wrapper over Windows.Media.Ocr, detector pipeline, layer-1 rule detectors, context-label matching, the layer-2 local model runner (ONNX Runtime), hit merging, sensitivity profiles. | *planned, Milestone 3* |
 | `src/ScrubShot.Clipboard` | Clipboard monitor, paste-destination detection (foreground app, browser site), just-in-time text scrubbing and restore. | *planned, Milestone 4* |
 | `src/ScrubShot.AddIns` | Add-on contract, verification (signature or hash), and the add-ons: faces, QR and barcodes, file and PDF scrubbing, metadata stripping. | *planned, Milestone 5* |
@@ -46,6 +46,7 @@ hotkey or tray
 
 Stage notes:
 
+- **Coordination** is one class, `CaptureCoordinator` (D-040): it owns the frozen screen for exactly the span from capture to crop and disposes it on every path, runs one capture at a time, remembers the last overlay region for repeat, and hands the cropped image to an `ICaptureSink`, which owns it from then on.
 - **Capture** runs first and immediately so the overlay shows exactly what was on screen when the hotkey fired, including open menus and tooltips. The process is PerMonitorV2 DPI aware; every coordinate in the pipeline is a physical pixel.
 - **Overlay** is native Win32, one topmost window per monitor, each drawing its slice of the frozen image 1:1. A shared virtual-screen selection model lets a drag span monitors. The overlay is the only UI on the hot path and contains no XAML.
 - **OCR and detection** run off the UI thread. OCR produces words with boxes. Two layers run on that text: layer 1 is the rule detectors (regex, validators, entropy, context labels), layer 2 is a small local named-entity / PII model run through ONNX Runtime on the CPU, there to catch what rules cannot (person names, street addresses, unlabeled secrets). Visual add-ons (faces, QR codes) receive the image. Layer 2 ships with the app, is on by default, and has a setting and a policy (`Scrubbing.AiLayerEnabled`) to turn it off; layer 1 keeps running either way. The model is chosen by a benchmark against the fixture corpus before Milestone 3 (see [milestone-3-notes.md](milestone-3-notes.md), D-029).
@@ -58,7 +59,7 @@ Stage notes:
 All detectors, built in or add-on, implement one interface in `ScrubShot.Detection`:
 
 - Input: a `DetectionContext` with the OCR result (words, boxes, lines), the cropped image, the active sensitivity profile and the user's custom patterns.
-- Output: a list of hits, each with a type (for example `Email`, `TenantId`, `AwsAccessKey`), a confidence, one or more bounding boxes in image coordinates, and a masked preview for the side panel (for example `j***@kcc.com`).
+- Output: a list of hits, each with a type (for example `Email`, `TenantId`, `AwsAccessKey`), a confidence, one or more bounding boxes in image coordinates, and a masked preview for the side panel (for example `j***@example.com`).
 - Candidates are normalized before matching to absorb common OCR confusions (O/0, l/1/I, S/5, B/8) and spacing breaks, and adjacent word boxes are merged when a pattern spans them.
 - Context labels nearby ("Tenant ID", "Client ID", "Secret", "Key", "Token") raise confidence and set the type; this is what tells one GUID from another.
 
