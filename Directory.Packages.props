@@ -21,5 +21,8 @@
 
     <!-- Tests. xUnit v3 on Microsoft.Testing.Platform. Apache-2.0, development only. -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
+
+    <!-- tools/IconBuild only: renders the SVG icon sources to PNG and ICO. MIT, development only, never shipped. -->
+    <PackageVersion Include="Svg.Skia" Version="5.2.3" />
   </ItemGroup>
 </Project>

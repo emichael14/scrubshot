@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    IconBuild: development tool that renders the SVG icon sources in assets/icon to the PNG sizes
+    and the multi-size .ico the app and installer use, plus a preview sheet on light and dark
+    backgrounds. Never shipped. Run the tool with no arguments for usage.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ScrubShot.Tools.IconBuild</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Svg.Skia" />
+  </ItemGroup>
+
+</Project>
