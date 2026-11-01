@@ -9,7 +9,7 @@ Target architecture for the first six milestones. Projects marked *planned* do n
 - **Detection has no UI dependencies.** `ScrubShot.Detection` references Core and the Windows OCR API only, so it is unit tested against text and image fixtures without a window.
 - **Every setting resolves through policy.** Settings are read through a resolver that applies machine policy, user policy, user settings and defaults in that order and reports which one won, so the UI can show a lock.
 - **The logging API cannot accept captured content.** Call sites pass event ids and numeric, boolean or timing fields only.
-- **Seams for later private extensions.** Central policy service, audit logging and similar paid features plug into interfaces defined in Core; the open-source build ships the default local implementations.
+- **Extension points behind interfaces.** Policy provision and audit sinks are interfaces defined in Core; the open-source build ships the default local implementations (registry policy, no audit sink), and alternative implementations can be added as separate packages without changing the core.
 
 ## Solution layout
 

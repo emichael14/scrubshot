@@ -29,9 +29,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 1. Milestone 1 step 3: capture engine (`MonitorLayout` from `EnumDisplayMonitors` and `GetDpiForMonitor`, `IScreenCapturer` with `GdiScreenCapturer`, `FrozenScreen`, optional cursor compositing, capture delay) and geometry helpers in Core with synthetic mixed-DPI layout tests. See `docs/milestone-1-plan.md`.
 2. Step 4: selection overlay.
 
-**Owner questions carried from today**
-
-- The spec working copy in `.local/` has revision v1.1 (two-layer detection). Should the spec be committed to the repo as `SPEC.md`, and should the Downloads original be updated? Both need the owner (outside the autonomy rule).
+**Spec files (decided by the owner later the same day).** `SPEC.md` in the repo is the public source of truth (public-safe edition of revision v1.1). The unedited spec with owner context is `CLAUDE.local-spec.md`, gitignored.
 
 **Environment notes**
 
@@ -42,7 +40,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 **Open questions carried from the spec (do not block on them)**
 
-- Ownership entity (Technest Valley LLC or a ScrubShot LLC) for the copyright line.
+- Ownership entity for the copyright line (decided by the owner outside the repo).
 - Default risky AI site list and trusted app list for the clipboard monitor.
 - Which NER model for names and addresses, given size and license.
 

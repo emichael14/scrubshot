@@ -107,7 +107,7 @@ Guiding rule from the spec: when in doubt, choose the more private and more conf
 // Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided; see docs/decisions.md.
 ```
 
-**Why.** The ownership entity (Technest Valley LLC or a separate ScrubShot LLC) is an open question in the spec. SPDX keeps headers short and machine-readable, and the placeholder is one search-and-replace away from final.
+**Why.** The ownership entity for the copyright line is not yet decided (an owner matter outside the repo). SPDX keeps headers short and machine-readable, and the placeholder is one search-and-replace away from final.
 
 ### D-016 Repo bootstrapped locally; `main` holds only what GitHub's template would have created
 

@@ -87,6 +87,7 @@ Each milestone ends with a working, runnable app, passing tests and an updated R
 
 ## Project documents
 
+- [Specification](SPEC.md): what ScrubShot does, its constraints and the build order.
 - [Architecture](docs/architecture.md): projects, boundaries and the capture pipeline.
 - [Decisions log](docs/decisions.md): every design decision not covered by the spec, with reasons.
 - [Milestone 1 plan](docs/milestone-1-plan.md)

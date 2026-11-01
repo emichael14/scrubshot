@@ -1,6 +1,6 @@
 # ScrubShot: Claude Code project instructions
 
-ScrubShot is a free, open-source Windows screenshot tool (C#, .NET 10, WinUI 3) that detects and blurs sensitive data locally before an image or text leaves the PC. The authoritative requirements are the build spec; its local path is in `CLAUDE.local.md`. This file covers how to work in this repo. The spec covers what to build.
+ScrubShot is a free, open-source Windows screenshot tool (C#, .NET 10, WinUI 3) that detects and blurs sensitive data locally before an image or text leaves the PC. The authoritative requirements are in `SPEC.md`, the public source of truth. A private, unedited copy with owner context lives at `CLAUDE.local-spec.md` (gitignored); read it when present, but never quote it into committed files. This file covers how to work in this repo. The spec covers what to build.
 
 ## Start of every session
 
@@ -67,4 +67,6 @@ Work through this list first. If a check fails, decide by this rule:
 | Milestone plans | `docs/milestone-N-*.md` |
 | Decisions and rationale | `docs/decisions.md` |
 | Architecture and pipeline | `docs/architecture.md` |
-| Machine-specific notes, spec path, tooling quirks | `CLAUDE.local.md` (not committed) |
+| Product specification (public) | `SPEC.md` |
+| Private spec copy with owner context | `CLAUDE.local-spec.md` (not committed) |
+| Machine-specific notes, tooling quirks | `CLAUDE.local.md` (not committed) |
