@@ -4,7 +4,9 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 ## 2026-11-01 (session 2)
 
-**Milestone:** 1 (foundation and capture). **Steps 1 (scaffold) and 2 (Core settings and policy) done** on branch `milestone-1-capture`, rebased onto `main` after PR #1 merged.
+**Milestone:** 1 (foundation and capture). **Steps 1 (scaffold), 2 (Core settings and policy) and 3 (capture engine) done** on branch `milestone-1-capture`, rebased onto `main` after PR #1 merged.
+
+**Step 3 summary (same day, later).** `ScrubShot.Core.Geometry`: `PixelPoint`, `PixelSize`, `PixelRect`, `MonitorInfo`, `MonitorLayout` with virtual-screen, bitmap and monitor-local conversions (D-035). `ScrubShot.Capture`: `MonitorEnumerator` (EnumDisplayMonitors, GetMonitorInfo, GetDpiForMonitor), `IScreenCapturer`, `GdiScreenCapturer` (one top-down DIB section, BitBlt per monitor with CAPTUREBLT, optional cursor), `FrozenScreen` (zeroed on dispose, crop to `CapturedImage`) (D-036). `tools/CaptureCheck` landed early (D-037): on this machine it captured 1920x1080 with the cursor in 51 ms and the PNG matched the live screen. 110 tests, including synthetic mixed-DPI layouts (150 percent laptop beside 100 percent monitor, negative origin, stacked). An adversarial review workflow ran on the step 3 code before commit; its outcome is recorded below in Done.
 
 **Step 2 summary (same day, later).** `ScrubShot.Core.Settings`: immutable settings records; `SettingsSchema` (leaf paths, types, defaults derived from the record shape); `SettingsDocument` (JSON normalization: case-insensitive names, per-leaf reset of invalid values); `JsonSettingsStore` (atomic save, timestamped set-aside, unreadable-file protection, newer-schema backup); `IPolicySource` with registry and in-memory implementations; `SettingsResolver` (machine policy > user policy > user > defaults with per-setting source and lock). `ScrubShot.Core.Output`: `FileNamePattern` (tokens, sanitizing, reserved names) and `UniqueFileName` (collision suffix). The app loads and resolves settings at launch. 93 tests. An adversarial review workflow (3 lenses, every finding refuted by two independent checkers) confirmed 9 distinct issues, all fixed before commit; decisions D-031 to D-034.
 
@@ -19,6 +21,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 - Commits pushed to `origin/milestone-1-capture`. First CI run green (restore, Release build, MTP test, TRX artifact) in 1m33s on windows-latest.
 - Decisions D-021 to D-027 recorded.
 - Later the same day: `CLAUDE.md` gained the autonomy rule for failed checks; `tools/IconBuild` added; original app icon designed (five directions, judged, refined, owner chose the diagonal trio with a three-bubble tray variant) and wired into the app, README and `assets/icon` (D-028). Owner confirmed the tray icon shows and Exit works.
+- Step 3 review: the adversarial workflow (Win32, memory and privacy, geometry lenses; two refuters per finding) confirmed 15 low-severity items and refuted 3. Fixed before commit: message-only exceptions for calls that do not set a last error, opaque alpha pass, `SelectObject` and `GdiFlush` result checks, PerMonitorV2 thread scope in enumeration and capture, single pointer read in the pixel span, checked buffer sizes, defensive copy of the monitor list, `FrozenScreen` tests on a real DIB section, extra layout fixtures (primary in the middle, symmetric distance, stacked gap). Deferred with a note in D-036: cursor size on a mixed-DPI secondary monitor.
 
 **Blocked or waiting on the owner**
 
@@ -26,8 +29,9 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 - Right-click the tray icon once and confirm Exit ends the process cleanly (the only path not covered by the automated check).
 **Next**
 
-1. Milestone 1 step 3: capture engine (`MonitorLayout` from `EnumDisplayMonitors` and `GetDpiForMonitor`, `IScreenCapturer` with `GdiScreenCapturer`, `FrozenScreen`, optional cursor compositing, capture delay) and geometry helpers in Core with synthetic mixed-DPI layout tests. See `docs/milestone-1-plan.md`.
-2. Step 4: selection overlay.
+1. Milestone 1 step 4: selection overlay (per-monitor topmost Win32 windows showing the dimmed frozen image, region drag with size readout, crosshair, magnifier, keyboard nudge, window-pick mode, last region memory). See `docs/milestone-1-plan.md`.
+2. Step 5: hotkeys with conflict detection.
+3. Mixed-DPI acceptance: run `tools/CaptureCheck` on the owner's two-monitor setup and compare PNG sizes and known pixels against the live screen.
 
 **Spec files (decided by the owner later the same day).** `SPEC.md` in the repo is the public source of truth (public-safe edition of revision v1.1). The unedited spec with owner context is `CLAUDE.local-spec.md`, gitignored.
 

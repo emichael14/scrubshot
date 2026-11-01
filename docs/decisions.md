@@ -244,3 +244,23 @@ Guiding rule from the spec: when in doubt, choose the more private and more conf
 
 **Why.** A suffix keeps the chosen pattern intact and sorts next to the original. Reusing `${NUM}` for collisions would make the pattern's meaning depend on what is already on disk.
 
+### D-035 Pixel geometry lives in Core; the monitor layout is a plain model
+
+**Decision.** `ScrubShot.Core.Geometry` holds `PixelPoint`, `PixelSize`, `PixelRect` (origin plus size, exclusive right and bottom edges like Win32 `RECT`, non-negative sizes enforced) and `MonitorInfo` / `MonitorLayout` (bounds, work area, DPI and primary flag per monitor; the virtual screen as the union of bounds; conversions between virtual-screen, bitmap and monitor-local coordinates). `ScrubShot.Capture.MonitorEnumerator` fills the model from `EnumDisplayMonitors`, `GetMonitorInfo` and `GetDpiForMonitor`; a layout rejects zero monitors, zero or several primaries, non-sequential indexes and empty bounds.
+
+**Why.** Every coordinate decision (which monitor a point is on, where a monitor lands in the frozen bitmap, clamping a drag) is pure arithmetic that must be right on mixed-DPI hardware the development machine does not have. Keeping it free of Win32 lets synthetic layouts (150 percent laptop beside a 100 percent monitor, negative origins, stacked monitors) cover it in unit tests that run in CI.
+
+### D-036 The frozen screen is one DIB section, cleared on dispose
+
+**Decision.** `FrozenScreen.Allocate` creates a single 32-bit top-down DIB section the size of the virtual screen (rejecting layouts whose byte size would not fit an int); `GdiScreenCapturer` selects it into a memory DC and fills it with one `BitBlt` (`SRCCOPY | CAPTUREBLT`) per monitor from the screen device context at physical coordinates, checks `SelectObject` and `GdiFlush` results so a failed blit can never come back as a silent black capture, then sets every alpha byte to 0xFF because GDI leaves the fourth byte of a 32-bit `BI_RGB` surface undefined. Both `MonitorEnumerator.GetLayout` and `Capture` switch the calling thread to PerMonitorV2 (`SetThreadDpiAwarenessContext`) for their duration and restore it, so a thread in another context cannot produce scaled coordinates. `FrozenScreen` owns the `HBITMAP` and the pointer to its bits, exposes the pixels as a read-only span that must not outlive it and `Crop` for tightly packed copies, keeps the GDI handle for the overlay to blit from, and on dispose zeroes the pixel memory before deleting the bitmap (a finalizer does the same if an owner forgets). Device contexts are created and released inside the capture call, never kept, so the bitmap can be used from any thread. Exceptions carry a Win32 error code only for calls documented to set one (`BitBlt`, `CreateDIBSection`, `GdiFlush`). The cursor is composited on request from `GetCursorInfo` and `DrawIconEx` at its hotspot and resource size, and the `ICONINFO` bitmaps are deleted. The capture delay is the coordinator's job, not the capturer's.
+
+**Why.** One contiguous buffer is the simplest thing that is pixel-exact across monitors and gives both GDI (overlay) and managed code (OCR, encoding) direct access without a copy. Zeroing on dispose honors "the original lives only in memory for the session" in the strongest practical sense. A DIB section is pagefile-backed like any other memory; nothing is written to a file. The result checks, the alpha pass, the thread DPI scope and the error-code rule came out of the adversarial review of the first version.
+
+**Known limitation.** The cursor is drawn at the size of the cursor resource Windows handed back, not scaled to the DPI of the monitor it is on, so on a mixed-DPI secondary monitor it may be one size step off. Fixing it needs the mixed-DPI hardware test to validate the scale factor (candidate: `GetSystemMetricsForDpi(SM_CXCURSOR, monitor DPI)` against the resource size); revisit at the acceptance test.
+
+### D-037 CaptureCheck ships with the capture engine, not at the end
+
+**Decision.** `tools/CaptureCheck` (console, PerMonitorV2 manifest) was built in step 3 rather than step 9 of the plan. It prints the monitor table, captures through the real engine and writes the composite and per-monitor PNGs to a folder the user names, encoding with `Windows.Graphics.Imaging.BitmapEncoder` (in-box, no package). On the development machine it produced a correct 1920x1080 capture with the cursor in 51 ms.
+
+**Why.** It is the only way to see the engine's output before the overlay exists, and the same PNG path is what the app's save feature will use later. It is a development tool and is the one place outside the app that writes captured pixels to disk, by explicit user request.
+
