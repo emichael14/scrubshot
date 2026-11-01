@@ -149,3 +149,51 @@ Guiding rule from the spec: when in doubt, choose the more private and more conf
 **Why.** Owner decision on 2026-11-01. Terms stay fixed to GPLv3 as written rather than deferring to future license versions. With the CLA granting the owner relicensing rights, "or later" adds no flexibility the project needs.
 
 **Considered.** GPL-3.0-or-later: slightly broader compatibility with future GPL versions, at the cost of binding to terms not yet written.
+
+---
+
+## 2026-11-01 (Milestone 1, step 1: scaffold)
+
+### D-021 One target framework for every project
+
+**Decision.** All projects target `net10.0-windows10.0.26100.0` with `TargetPlatformMinVersion` 10.0.19041.0, set once in `Directory.Build.props`. The plan had `net10.0-windows` for Core and Capture.
+
+**Why.** A plain `net10.0-windows` project cannot reference a library built for a 10.0.x platform version, so the test project would have forced the choice anyway. Capture will want WinRT APIs (Windows.Graphics.Capture) behind `IScreenCapturer`, which need the platform TFM. One value in one file cannot drift.
+
+### D-022 Tests run on xUnit v3 over Microsoft.Testing.Platform
+
+**Decision.** `xunit.v3` 4.x only, `OutputType=Exe`, `UseMicrosoftTestingPlatformRunner=true`. `global.json` selects `"test": { "runner": "Microsoft.Testing.Platform" }`. No `Microsoft.NET.Test.Sdk`, no `xunit.runner.visualstudio`. CI and local runs use `dotnet test --report-xunit-trx --results-directory TestResults`.
+
+**Why.** xunit.v3 4.x defaults to MTP v2, and the .NET 10 SDK refuses to run MTP projects through the legacy VSTest path (`dotnet test` fails with an explicit error). MTP is the SDK's documented direction and is faster.
+
+**Considered.** xunit 2.9 on VSTest, which is what the SDK's `dotnet new xunit` template still emits. Rejected as the legacy path.
+
+### D-023 License header wording and enforcement
+
+**Decision.** The second header line is now `Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided (docs/decisions.md D-015).` (supersedes the wording in D-015). `.editorconfig` carries the header as `file_header_template` and IDE0073 is a warning, which `TreatWarningsAsErrors` plus `EnforceCodeStyleInBuild` turns into a build failure for any `.cs` file without it. XAML and manifest files carry the same two lines as XML comments at the top; the analyzer does not cover them.
+
+**Why.** Roslyn's `.editorconfig` parser treats `;` and `#` as inline comment starters, so the original "decided; see docs/decisions.md" was truncated and every file failed the header check. Enforcing at build time is cheaper than reviewing for it.
+
+### D-024 Milestone branch cut from `chore/repo-setup` while PR #1 is open
+
+**Decision.** `milestone-1-capture` was created from `chore/repo-setup` (the head of PR #1), not from `main`.
+
+**Why.** `main` holds only the initial commit until PR #1 merges, so a branch from it would lack `CLAUDE.md`, the docs and the plan. `chore/repo-setup` is exactly what `main` becomes after the merge; the extra commits disappear from the Milestone 1 diff once PR #1 lands.
+
+### D-025 App platforms and publish settings
+
+**Decision.** `ScrubShot.App` builds for x64 and ARM64 only. `PublishTrimmed` is off; `PublishReadyToRun` is on for non-Debug builds. The template's `Microsoft.Windows.SDK.BuildTools.WinApp` package (packaged-app `dotnet run` support) is not referenced.
+
+**Why.** Windows 11 has no 32-bit edition and 32-bit Windows 10 is rare in the target audience. Trimming a WinUI 3 app with a third-party XAML library needs verification that belongs in Milestone 6 (packaging), not in the scaffold. The WinApp build-tools package only serves packaged apps; the primary deployment is unpackaged (D-004).
+
+### D-026 Allowed parameter types for the logging API (refines D-014)
+
+**Decision.** Methods on `ScrubShot.Core.Logging.Log` may take only `ILogger` (first), `bool`, `int`, `long`, `double`, `TimeSpan`, `Version` and enums. `string`, `object`, `Exception` and buffers are excluded. `tests/ScrubShot.Tests/Core/LogApiTests.cs` enforces this by reflection. Errors will be logged as error codes (HResult or Win32 error) through a helper that arrives with the opt-in file sink.
+
+**Why.** Exception messages routinely embed file paths and user data (an `IOException` from a save names the capture file), so allowing `Exception` would reopen the hole D-014 closes.
+
+### D-027 The app verifies PerMonitorV2 at startup
+
+**Decision.** `ScrubShot.Capture.ProcessDpi.IsPerMonitorV2()` compares the thread's `DPI_AWARENESS_CONTEXT` with `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` through `AreDpiAwarenessContextsEqual`. The app logs event 1002 (warning) if the manifest did not take effect. Capture still runs.
+
+**Why.** Every coordinate in the pipeline is a physical pixel (D-005). If the manifest is ever lost (a packaging or launcher change), scaled captures should show up in a debug log rather than as a silent accuracy bug.

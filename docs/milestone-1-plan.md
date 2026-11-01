@@ -1,6 +1,6 @@
 # Milestone 1 plan: foundation and capture
 
-**Status:** proposed 2026-11-01, awaiting owner review. Work starts on branch `milestone-1-capture` once approved.
+**Status:** approved by the owner on 2026-11-01. In progress on branch `milestone-1-capture`; step 1 (scaffold) complete. Progress is tracked in `docs/status.md`.
 
 ## Goal
 
