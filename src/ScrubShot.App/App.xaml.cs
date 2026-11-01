@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using ScrubShot.Capture;
 using ScrubShot.Core.Logging;
+using ScrubShot.Core.Settings;
 
 namespace ScrubShot.App;
 
@@ -20,12 +21,17 @@ public sealed partial class App : Application
     // tab (docs/decisions.md D-014). Until then every log call is a no-op.
     private readonly ILogger _logger = NullLogger.Instance;
 
+    private readonly ISettingsStore _settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultFilePath);
+
     private TaskbarIcon? _trayIcon;
 
     public App()
     {
         InitializeComponent();
     }
+
+    /// <summary>Settings after policy, resolved at launch. Re-resolved when settings change (Milestone 1 step 8).</summary>
+    public EffectiveSettings Settings { get; private set; } = SettingsResolver.Resolve(ScrubShotSettings.Defaults, InMemoryPolicySource.Empty, InMemoryPolicySource.Empty);
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -34,6 +40,20 @@ public sealed partial class App : Application
         if (!isPerMonitorV2)
         {
             Log.DpiAwarenessUnexpected(_logger);
+        }
+
+        try
+        {
+            Settings = SettingsResolver.Resolve(
+                _settingsStore.Load(),
+                RegistryPolicySource.Machine(_logger),
+                RegistryPolicySource.User(_logger),
+                _logger);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Text.Json.JsonException)
+        {
+            // Nothing in a settings file or policy key may stop the app from starting. Defaults stay in effect.
+            Log.SettingsLoadFailed(_logger, ex.HResult);
         }
 
         var exitCommand = (XamlUICommand)Resources["ExitCommand"];
