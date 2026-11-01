@@ -13,9 +13,11 @@ if (args.Length == 0 || args[0] is "-h" or "--help")
 {
     Console.Error.WriteLine("CaptureCheck <outputFolder> [--cursor] [--overlay region|window] [--no-confirm-on-release]");
     Console.Error.WriteLine("CaptureCheck --hotkeys [seconds]");
+    Console.Error.WriteLine("CaptureCheck --flow region|window|full|monitor|repeat <outputFolder> [monitorIndex] [--busy]");
     Console.Error.WriteLine("  Prints the monitor table, captures the virtual screen and writes composite.png plus monitor-N.png.");
     Console.Error.WriteLine("  --overlay shows the selection overlay on the capture and writes selection.png for the confirmed region.");
     Console.Error.WriteLine("  --hotkeys registers the default hotkeys, prints each binding's status and reports presses for the given seconds (default 10).");
+    Console.Error.WriteLine("  --flow runs the CaptureCoordinator end to end and writes flow.png; --busy fires a second request while the first runs.");
     return 2;
 }
 
@@ -39,6 +41,54 @@ if (args[0] == "--hotkeys")
     await Task.Delay(TimeSpan.FromSeconds(seconds));
     Console.WriteLine("Done.");
     return 0;
+}
+
+if (args[0] == "--flow")
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("--flow needs a mode and an output folder.");
+        return 2;
+    }
+
+    var folder = Path.GetFullPath(args[2]);
+    Directory.CreateDirectory(folder);
+    var monitorIndex = args.Length > 3 && int.TryParse(args[3], CultureInfo.InvariantCulture, out var mi) ? mi : 0;
+    var request = args[1].ToLowerInvariant() switch
+    {
+        "region" => ScrubShot.Core.Coordination.CaptureRequest.Region,
+        "window" => ScrubShot.Core.Coordination.CaptureRequest.Window,
+        "full" => ScrubShot.Core.Coordination.CaptureRequest.FullScreen,
+        "monitor" => ScrubShot.Core.Coordination.CaptureRequest.ForMonitor(monitorIndex),
+        "repeat" => ScrubShot.Core.Coordination.CaptureRequest.RepeatLastRegion,
+        _ => throw new ArgumentException($"Unknown flow mode '{args[1]}'."),
+    };
+
+    var sink = new PngFolderSink(folder);
+    var coordinator = new ScrubShot.Capture.Coordination.CaptureCoordinator(
+        new GdiScreenCapturer(),
+        MonitorEnumerator.GetLayout,
+        ScrubShot.Capture.Coordination.OverlayRegionSelector.Instance,
+        sink,
+        () => new ScrubShot.Core.Settings.CaptureSettings());
+
+    var flowWatch = Stopwatch.StartNew();
+    var first = coordinator.CaptureAsync(request);
+    if (args.Contains("--busy"))
+    {
+        var second = await coordinator.CaptureAsync(ScrubShot.Core.Coordination.CaptureRequest.FullScreen);
+        Console.WriteLine($"Second request while busy: {second}");
+    }
+
+    var outcome = await first;
+    flowWatch.Stop();
+    Console.WriteLine($"Flow {request.Mode}: {outcome} in {flowWatch.ElapsedMilliseconds} ms; last region: {coordinator.LastRegion?.ToString() ?? "none"}");
+    if (sink.Last is { } last)
+    {
+        Console.WriteLine($"flow.png: {last.Width}x{last.Height} from {last.ScreenRect}");
+    }
+
+    return outcome == ScrubShot.Core.Coordination.CaptureOutcome.Completed ? 0 : 3;
 }
 
 var outputFolder = Path.GetFullPath(args[0]);
@@ -102,4 +152,20 @@ static async Task WritePngAsync(string path, CapturedImage image)
     var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
     encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)image.Width, (uint)image.Height, 96, 96, image.Pixels);
     await encoder.FlushAsync();
+}
+
+/// <summary>Development-only sink: writes the capture as flow.png in the chosen folder, by explicit request (D-037).</summary>
+file sealed class PngFolderSink(string folder) : ScrubShot.Capture.Coordination.ICaptureSink
+{
+    public CapturedImage? Last { get; private set; }
+
+    public async Task HandleAsync(CapturedImage image, ScrubShot.Core.Coordination.CaptureRequest request, CancellationToken cancellationToken)
+    {
+        Last = image;
+        using var file = File.Create(Path.Combine(folder, "flow.png"));
+        using var stream = file.AsRandomAccessStream();
+        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)image.Width, (uint)image.Height, 96, 96, image.Pixels);
+        await encoder.FlushAsync();
+    }
 }
