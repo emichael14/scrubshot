@@ -1,6 +1,6 @@
 # Milestone 1 plan: foundation and capture
 
-**Status:** approved by the owner on 2026-11-01. In progress on branch `milestone-1-capture`; step 1 (scaffold) complete. Progress is tracked in `docs/status.md`.
+**Status:** approved by the owner on 2026-11-01. In progress on branch `milestone-1-capture`; steps 1 (scaffold) and 2 (Core settings and policy) complete. Progress is tracked in `docs/status.md`.
 
 ## Goal
 

@@ -4,7 +4,9 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 ## 2026-11-01 (session 2)
 
-**Milestone:** 1 (foundation and capture). **Step 1 (scaffold) done** on branch `milestone-1-capture`. Owner approved the plan and its five assumptions in the session prompt; PR #1 is still open (see D-024 for the branch base).
+**Milestone:** 1 (foundation and capture). **Steps 1 (scaffold) and 2 (Core settings and policy) done** on branch `milestone-1-capture`, rebased onto `main` after PR #1 merged.
+
+**Step 2 summary (same day, later).** `ScrubShot.Core.Settings`: immutable settings records; `SettingsSchema` (leaf paths, types, defaults derived from the record shape); `SettingsDocument` (JSON normalization: case-insensitive names, per-leaf reset of invalid values); `JsonSettingsStore` (atomic save, timestamped set-aside, unreadable-file protection, newer-schema backup); `IPolicySource` with registry and in-memory implementations; `SettingsResolver` (machine policy > user policy > user > defaults with per-setting source and lock). `ScrubShot.Core.Output`: `FileNamePattern` (tokens, sanitizing, reserved names) and `UniqueFileName` (collision suffix). The app loads and resolves settings at launch. 93 tests. An adversarial review workflow (3 lenses, every finding refuted by two independent checkers) confirmed 9 distinct issues, all fixed before commit; decisions D-031 to D-034.
 
 **Done**
 
@@ -24,8 +26,12 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 - Right-click the tray icon once and confirm Exit ends the process cleanly (the only path not covered by the automated check).
 **Next**
 
-1. Milestone 1 step 2: Core settings and policy (settings records, versioned JSON store with atomic writes, policy resolver with source reporting, file name pattern engine) with unit tests. See `docs/milestone-1-plan.md`.
-2. Step 3: capture engine (`MonitorLayout`, `IScreenCapturer`, `GdiScreenCapturer`, `FrozenScreen`) with synthetic-layout geometry tests.
+1. Milestone 1 step 3: capture engine (`MonitorLayout` from `EnumDisplayMonitors` and `GetDpiForMonitor`, `IScreenCapturer` with `GdiScreenCapturer`, `FrozenScreen`, optional cursor compositing, capture delay) and geometry helpers in Core with synthetic mixed-DPI layout tests. See `docs/milestone-1-plan.md`.
+2. Step 4: selection overlay.
+
+**Owner questions carried from today**
+
+- The spec working copy in `.local/` has revision v1.1 (two-layer detection). Should the spec be committed to the repo as `SPEC.md`, and should the Downloads original be updated? Both need the owner (outside the autonomy rule).
 
 **Environment notes**
 

@@ -217,3 +217,30 @@ Guiding rule from the spec: when in doubt, choose the more private and more conf
 ### D-030 License audit on 2026-11-01: GPL-3.0-only everywhere, nothing to fix
 
 **Decision.** After PR #1 merged, every license mention was audited: README, `LICENSE` (unmodified GPLv3 text), SPDX headers in all `.cs`, `.xaml`, `.svg` and manifest files, the `.editorconfig` header template, `Directory.Build.props` package metadata, `CLAUDE.md`, `assets/icon/README.md` and `docs/status.md`. All say GPL-3.0-only. The only "or-later" strings are inside D-020, which records the choice. No change was needed; this entry records that the check was done so it is not repeated.
+
+### D-031 Settings schema is derived from the record shape; policy merges through JSON
+
+**Decision.** `ScrubShotSettings` is a tree of immutable records (sections General, Output, Capture, Hotkeys, Advanced) whose leaf properties are the settings. `SettingsSchema` derives the list of leaf paths ("Section.Name"), types and defaults from that shape by reflection, once. `SettingsResolver` serializes the user settings to JSON, overlays policy values from the user hive and then the machine hive onto the matching JSON leaves, and deserializes the result; it records a `SettingSource` (Default, User, UserPolicy, MachinePolicy) per path, and `EffectiveSettings.IsLocked` is true for the two policy sources. The policy registry value name is the setting path, so `Output.DefaultAction` in `HKLM\Software\Policies\ScrubShot` sets that setting. `SchemaVersion` is not a setting and cannot be set by policy.
+
+**Why.** One declaration (the record) feeds the file format, the policy names, the lock state and, in Milestone 5, the ADMX templates, so none of them can drift. Records with `init` properties keep settings immutable in flight, which suits MVVM and makes "re-resolve when something changes" trivial. The JSON overlay avoids a hand-maintained switch over every setting.
+
+**Considered.** A hand-written `SettingDefinition<T>` list with getters and setters: explicit but duplicates every property. A flat dictionary of settings: loses typing for consumers.
+
+### D-032 Policy value conversion rules
+
+**Decision.** Policy sources yield only REG_DWORD (int) and REG_SZ or REG_EXPAND_SZ (string, environment variables not expanded) values; other kinds are dropped, and a value that fails to read (a policy refresh rewriting the key) is skipped without dropping the rest of the hive. Conversion to the setting type: bool from DWORD (non-zero is true) or the strings `true`, `false`, `1`, `0`; int from DWORD or an invariant-culture integer string; enum from an exact member name (case-insensitive; comma lists and numeric strings are rejected) or a DWORD ordinal that is defined; string from REG_SZ only. A value that names an unknown setting or fails conversion is ignored, the lower-precedence value stays, and only the count of ignored values is logged (event 1104). Range validation of ints (for example JPEG quality) belongs to the consumer, not the resolver.
+
+**Why.** Group Policy and Intune write DWORDs for booleans and strings for everything else, so both forms must work. Ignoring bad values rather than failing keeps a policy typo from breaking the app, and leaving the lower-precedence value in place means a bad machine value can never unlock a valid user-policy value. Logging only a count keeps policy names and values out of logs (D-014).
+
+### D-033 Settings file handling: atomic replace, corrupt file set aside, no writes on load
+
+**Decision.** `JsonSettingsStore` writes to a temporary file in the same folder, flushes to disk, then moves it over `settings.json` with overwrite, so a crash mid-write leaves the previous file intact. Load never creates the folder or file. The document is parsed to a JSON tree first and shaped to the schema by `SettingsDocument.Normalize` before binding: property names are matched case-insensitively, absent sections and leaves are filled with defaults silently, and a leaf that is present but null, of the wrong JSON kind or an undefined enum name is reset to its default and counted (event 1105), so one bad value never discards the file. Only a file that is not valid JSON is set aside, under a timestamped `settings.invalid.<stamp>.json` name that never overwrites an earlier copy. A file that could not be read (locked, access denied) or a corrupt file that could not be set aside is set aside before the next save; if that fails, the save throws rather than overwrite. A file written by a newer schema is copied to `settings.v<N>.json` before this build first rewrites it. Older schema versions are migrated in memory on load (schema 1 is the first, so migration is a version bump). Enums are stored as names, properties are PascalCase, comments and trailing commas are tolerated when reading.
+
+**Why.** Users and admins edit this file by hand and sync it between machines; overwriting a broken one silently would destroy their edits, while refusing to start would be worse. Per-leaf reset keeps everything that is good, and the set-aside and backup copies make every destructive path recoverable. These rules came out of the adversarial review of the first version, which found that a single bad leaf, an explicit `null`, a locked file or a newer file could each lose user data.
+
+### D-034 File name collisions get a numeric suffix
+
+**Decision.** When a target file exists, `UniqueFileName` appends `-2`, `-3`, ... before the extension, up to 10,000 attempts. The `${NUM}` token in patterns is a separate sequence number supplied by the caller and is not used for collision handling.
+
+**Why.** A suffix keeps the chosen pattern intact and sorts next to the original. Reusing `${NUM}` for collisions would make the pattern's meaning depend on what is already on disk.
+
