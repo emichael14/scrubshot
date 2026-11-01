@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided (docs/decisions.md D-015).
 
+using System.Globalization;
 using H.NotifyIcon;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using ScrubShot.Capture;
+using ScrubShot.Capture.Coordination;
 using ScrubShot.Capture.Hotkeys;
+using ScrubShot.Core.Coordination;
+using ScrubShot.Core.Lifecycle;
 using ScrubShot.Core.Logging;
 using ScrubShot.Core.Settings;
 
@@ -24,8 +29,11 @@ public sealed partial class App : Application
 
     private readonly ISettingsStore _settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultFilePath);
 
+    private SingleInstance? _instance;
     private TaskbarIcon? _trayIcon;
+    private MenuFlyoutSubItem? _monitorMenu;
     private HotkeyService? _hotkeys;
+    private CaptureCoordinator? _coordinator;
 
     public App()
     {
@@ -37,6 +45,18 @@ public sealed partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        _instance = SingleInstance.TryAcquire();
+        if (_instance is null)
+        {
+            // The running instance was signalled (D-040); this process has nothing else to do.
+            Log.SecondInstanceExiting(_logger);
+            Environment.Exit(0);
+            return;
+        }
+
+        _instance.ActivationRequested += () => Log.ActivationRequested(_logger); // the Settings window opens here from step 8
+        _instance.Start();
+
         var isPerMonitorV2 = ProcessDpi.IsPerMonitorV2();
         Log.AppStarted(_logger, typeof(App).Assembly.GetName().Version ?? new Version(0, 0), isPerMonitorV2);
         if (!isPerMonitorV2)
@@ -58,22 +78,111 @@ public sealed partial class App : Application
             Log.SettingsLoadFailed(_logger, ex.HResult);
         }
 
-        var exitCommand = (XamlUICommand)Resources["ExitCommand"];
-        exitCommand.ExecuteRequested += (_, _) => Shutdown(0);
+        SyncStartupRegistration();
+
+        _coordinator = new CaptureCoordinator(
+            new GdiScreenCapturer(),
+            MonitorEnumerator.GetLayout,
+            OverlayRegionSelector.Instance,
+            DiscardingCaptureSink.Instance, // replaced by the clipboard and file sink in step 7
+            () => Settings.Values.Capture,
+            _logger);
 
         _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
+        _trayIcon.ContextFlyout = BuildTrayMenu();
+        // H.NotifyIcon 2.4.1 (TaskbarIcon.MouseEvents.OnMouseEvent) executes RightClickCommand in the IconRightMouseUp case
+        // before ShowContextMenu, and PopupMenu mode rebuilds the native menu from the flyout items on every show.
+        // WM_CONTEXTMENU is routed as a keyboard event there and never shows the menu. Re-check on a library upgrade.
+        var refresh = new XamlUICommand();
+        refresh.ExecuteRequested += (_, _) => RefreshMonitorMenu();
+        _trayIcon.RightClickCommand = refresh;
         _trayIcon.ForceCreate();
 
         StartHotkeys();
     }
 
-    /// <summary>Registers the configured hotkeys. The capture coordinator that acts on them arrives in Milestone 1 step 6.</summary>
+    /// <summary>Keeps the Run key in step with the effective setting (policy included) at every launch (D-041).</summary>
+    private void SyncStartupRegistration()
+    {
+        if (Environment.ProcessPath is { } exe)
+        {
+            StartupRegistration.Sync(Settings.Values.General.LaunchAtStartup, exe, new RegistryStartupStore(), _logger);
+        }
+    }
+
+    private MenuFlyout BuildTrayMenu()
+    {
+        var menu = new MenuFlyout();
+        menu.Items.Add(Item("Capture region", () => Capture(CaptureRequest.Region)));
+        menu.Items.Add(Item("Capture window", () => Capture(CaptureRequest.Window)));
+        menu.Items.Add(Item("Capture full screen", () => Capture(CaptureRequest.FullScreen)));
+        _monitorMenu = new MenuFlyoutSubItem { Text = "Capture monitor" };
+        menu.Items.Add(_monitorMenu);
+        menu.Items.Add(Item("Repeat last region", () => Capture(CaptureRequest.RepeatLastRegion)));
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(new MenuFlyoutItem { Text = "Open last capture", IsEnabled = false }); // step 7
+        menu.Items.Add(new MenuFlyoutItem { Text = "Settings", IsEnabled = false }); // step 8
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(Item("Exit", () => Shutdown(0)));
+        RefreshMonitorMenu();
+        return menu;
+    }
+
+    /// <summary>Rebuilds the per-monitor submenu from the live layout; the tray library reads the items each time the menu opens.</summary>
+    private void RefreshMonitorMenu()
+    {
+        if (_monitorMenu is null)
+        {
+            return;
+        }
+
+        _monitorMenu.Items.Clear();
+        try
+        {
+            var layout = MonitorEnumerator.GetLayout();
+            foreach (var monitor in layout.Monitors)
+            {
+                var index = monitor.Index;
+                var label = string.Create(CultureInfo.InvariantCulture, $"Monitor {index + 1}: {monitor.Bounds.Width}x{monitor.Bounds.Height}{(monitor.IsPrimary ? " (primary)" : string.Empty)}");
+                _monitorMenu.Items.Add(Item(label, () => Capture(CaptureRequest.ForMonitor(index))));
+            }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
+        {
+            Log.CaptureFailed(_logger, CaptureMode.Monitor, ex.HResult);
+        }
+
+        _monitorMenu.IsEnabled = _monitorMenu.Items.Count > 0;
+    }
+
+    private static MenuFlyoutItem Item(string text, Action action)
+    {
+        // The tray library's native popup mode dispatches through Command, not Click.
+        var command = new XamlUICommand { Label = text };
+        command.ExecuteRequested += (_, _) => action();
+        return new MenuFlyoutItem { Text = text, Command = command };
+    }
+
+    /// <summary>Runs a capture off the caller's thread (tray UI thread or hotkey thread); the coordinator reports the outcome through the log.</summary>
+    private void Capture(CaptureRequest request)
+    {
+        if (_coordinator is { } coordinator)
+        {
+            _ = Task.Run(() => coordinator.CaptureAsync(request));
+        }
+    }
+
+    /// <summary>Registers the configured hotkeys and routes presses to the coordinator.</summary>
     private void StartHotkeys()
     {
         try
         {
             _hotkeys = HotkeyService.Start();
-            _hotkeys.Pressed += action => Log.HotkeyPressed(_logger, action);
+            _hotkeys.Pressed += action =>
+            {
+                Log.HotkeyPressed(_logger, action);
+                Capture(CaptureRequest.FromHotkey(action));
+            };
             _hotkeys.HandlerFailed += ex => Log.HotkeyHandlerFailed(_logger, ex.HResult);
             var bindings = _hotkeys.Apply(Settings.Values.Hotkeys);
             Log.HotkeysApplied(_logger, bindings.Count(b => b.IsRegistered), bindings.Count(b => !b.IsRegistered));
@@ -96,6 +205,8 @@ public sealed partial class App : Application
         _hotkeys = null;
         _trayIcon?.Dispose();
         _trayIcon = null;
+        _instance?.Dispose();
+        _instance = null;
 
         // There is no window whose close would end the dispatcher loop, so end the process
         // explicitly. This matches the library's windowless sample (H.NotifyIcon issue 66).

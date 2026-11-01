@@ -11,24 +11,13 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <XamlUICommand x:Key="ExitCommand" Label="Exit" Description="Exit ScrubShot">
-                <XamlUICommand.IconSource>
-                    <SymbolIconSource Symbol="ClosePane" />
-                </XamlUICommand.IconSource>
-            </XamlUICommand>
-
+            <!-- The menu is built in code (App.xaml.cs, BuildTrayMenu) because the monitor submenu changes with the display layout. -->
             <tb:TaskbarIcon
                 x:Key="TrayIcon"
                 ToolTipText="ScrubShot"
                 IconSource="ms-appx:///Assets/scrubshot.ico"
                 ContextMenuMode="PopupMenu"
-                NoLeftClickDelay="True">
-                <tb:TaskbarIcon.ContextFlyout>
-                    <MenuFlyout>
-                        <MenuFlyoutItem Command="{StaticResource ExitCommand}" />
-                    </MenuFlyout>
-                </tb:TaskbarIcon.ContextFlyout>
-            </tb:TaskbarIcon>
+                NoLeftClickDelay="True" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
