@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CaptureCheck: development tool for pixel-accuracy checks on real hardware. Prints the monitor table,
+    captures the virtual screen through ScrubShot.Capture and writes one PNG per monitor plus the composite
+    to a folder you choose. Never shipped. The PerMonitorV2 manifest matters: without it the coordinates
+    are virtualized and the check is meaningless.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ScrubShot.Tools.CaptureCheck</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ScrubShot.Capture\ScrubShot.Capture.csproj" />
+  </ItemGroup>
+
+</Project>
