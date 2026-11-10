@@ -1,6 +1,6 @@
 # Milestone 1 plan: foundation and capture
 
-**Status:** approved by the owner on 2026-11-01. In progress on branch `milestone-1-capture`; steps 1 (scaffold), 2 (Core settings and policy), 3 (capture engine, with `tools/CaptureCheck` pulled forward from step 9, D-037), 4 (selection overlay), 5 (hotkeys), 6 (tray menu, coordinator, single instance, startup) and 7 (output) complete. Progress is tracked in `docs/status.md`.
+**Status:** approved by the owner on 2026-11-01. In progress on branch `milestone-1-capture`; steps 1 (scaffold), 2 (Core settings and policy), 3 (capture engine, with `tools/CaptureCheck` pulled forward from step 9, D-037), 4 (selection overlay), 5 (hotkeys), 6 (tray menu, coordinator, single instance, startup), 7 (output), 8 (Settings window), 9 (verification, docs, pull request) and 10 (CLA) complete; the hardware acceptance tests are with the owner. Progress is tracked in `docs/status.md`.
 
 ## Goal
 

@@ -70,9 +70,11 @@ Add-ons use the same interface and are loaded from verified packages. The `docs/
 
 ## Settings and policy
 
-- User settings: versioned JSON at `%LOCALAPPDATA%\ScrubShot\settings.json`, written atomically.
+- User settings: versioned JSON at `%LOCALAPPDATA%\ScrubShot\settings.json`, written atomically and as differences: only the settings the user changed appear in the file (D-048).
 - Machine policy: `HKLM\Software\Policies\ScrubShot`. User policy: `HKCU\Software\Policies\ScrubShot`. Value names mirror setting paths, for example `Scrubbing.SensitivityLevel` or `Hotkeys.Region`.
 - Resolution: machine policy > user policy > user settings > defaults. The resolver returns the value and its source so the UI can render locked settings read-only with a lock icon.
+- `SettingsService` is the one place settings change at run time (D-045): a locked setting cannot be changed, a changed value must be valid, and a policy value is never written into the user's file. Policy is read again before every capture and when Settings opens, and a policy read that fails keeps the locks already known (D-048).
+- The Settings window (`ScrubShot.App.Settings`) applies each change at once through `SettingsEditSession`; its rules live in Core and are unit tested there (D-046).
 - ADMX/ADML templates (Milestone 5) are generated from the same settings schema so the two cannot drift.
 
 ## Deployment model
