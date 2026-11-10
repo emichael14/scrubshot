@@ -5,6 +5,16 @@ using Microsoft.Extensions.Logging;
 
 namespace ScrubShot.Core.Logging;
 
+/// <summary>Which output step failed. Logged instead of any detail about the content or destination.</summary>
+public enum OutputStage
+{
+    Clipboard,
+    File,
+
+    /// <summary>A subscriber to the output result (the notification) threw.</summary>
+    Notification,
+}
+
 /// <summary>
 /// Every log call site in ScrubShot goes through this class.
 /// </summary>
@@ -69,8 +79,8 @@ public static partial class Log
     public static partial void HotkeyPressed(ILogger logger, Core.Hotkeys.HotkeyAction action);
 
     [LoggerMessage(EventId = 1203, Level = LogLevel.Error,
-        Message = "The hotkey service could not start (error {ErrorCode}).")]
-    public static partial void HotkeyServiceFailed(ILogger logger, int errorCode);
+        Message = "The hotkey service could not start (HRESULT {HResult}).")]
+    public static partial void HotkeyServiceFailed(ILogger logger, int hResult);
 
     [LoggerMessage(EventId = 1204, Level = LogLevel.Error,
         Message = "A hotkey handler threw (HRESULT {HResult}).")]
@@ -105,6 +115,24 @@ public static partial class Log
     [LoggerMessage(EventId = 1306, Level = LogLevel.Information,
         Message = "Repeat last region fell back to region select: no remembered region fits the current layout.")]
     public static partial void RepeatRegionFellBack(ILogger logger);
+
+    // 15xx: output. Formats, flags, byte counts and timings. Never a path or a pixel.
+
+    [LoggerMessage(EventId = 1500, Level = LogLevel.Information,
+        Message = "Capture copied to the clipboard (excluded from history: {Excluded}) in {ElapsedMs} ms.")]
+    public static partial void OutputCopied(ILogger logger, bool excluded, long elapsedMs);
+
+    [LoggerMessage(EventId = 1501, Level = LogLevel.Information,
+        Message = "Capture saved as {Format}, {Bytes} bytes, in {ElapsedMs} ms.")]
+    public static partial void OutputSaved(ILogger logger, Core.Settings.ImageFormat format, long bytes, long elapsedMs);
+
+    [LoggerMessage(EventId = 1502, Level = LogLevel.Error,
+        Message = "Output stage {Stage} failed (HRESULT {HResult}).")]
+    public static partial void OutputFailed(ILogger logger, OutputStage stage, int hResult);
+
+    [LoggerMessage(EventId = 1503, Level = LogLevel.Warning,
+        Message = "Open last capture: the saved file is gone; the in-memory copy was re-copied instead: {Recopied}.")]
+    public static partial void LastCaptureFileMissing(ILogger logger, bool recopied);
 
     // 14xx: process lifecycle.
 

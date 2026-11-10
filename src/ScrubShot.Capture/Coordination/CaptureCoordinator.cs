@@ -140,7 +140,7 @@ public sealed class CaptureCoordinator
         }
         catch (Exception ex)
         {
-            Log.CaptureFailed(_logger, request.Mode, ex.HResult);
+            Log.CaptureFailed(_logger, request.Mode, ErrorCodes.HResultOf(ex));
             return CaptureOutcome.Failed;
         }
         finally
