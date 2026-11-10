@@ -26,12 +26,14 @@
     <Manifest Include="$(ApplicationManifest)" />
     <!-- The icon source of truth lives in assets/icon (regenerate with tools/IconBuild). The tray icon loads it from the output folder. -->
     <Content Include="..\..\assets\icon\scrubshot.ico" Link="Assets\scrubshot.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\icon\scrubshot-32.png" Link="Assets\scrubshot-32.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="H.NotifyIcon.WinUI" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 

@@ -16,6 +16,9 @@
     <!-- Tray icon for WinUI 3. MIT. D-009. -->
     <PackageVersion Include="H.NotifyIcon.WinUI" Version="2.4.1" />
 
+    <!-- MVVM base types (ObservableObject, RelayCommand) for the app's view models. MIT. Approved in the Milestone 1 plan. -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+
     <!-- Logging abstractions only; no provider is wired until the opt-in file sink ships. D-014. -->
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
 
