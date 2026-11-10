@@ -458,6 +458,12 @@ public sealed unsafe class OverlaySession : IDisposable
         private HFONT _font;
         private bool _ownsFont;
 
+        // Both buffers hold legible screen pixels (the dimmed copy and the composited frame), so their bits are
+        // kept in order to zero them on dispose, like the frozen screen itself (D-036).
+        private byte* _backBits;
+        private byte* _dimBits;
+        private int _bufferBytes;
+
         public MonitorWindow(OverlaySession session, MonitorInfo monitor)
         {
             _session = session;
@@ -489,8 +495,10 @@ public sealed unsafe class OverlaySession : IDisposable
                     throw new Win32Exception("CreateCompatibleDC failed for the overlay buffers.");
                 }
 
-                _backBitmap = CreateDib(bounds.Width, bounds.Height, out _);
-                _dimBitmap = CreateDib(bounds.Width, bounds.Height, out var dimBits);
+                _bufferBytes = checked(bounds.Width * bounds.Height * 4);
+                _backBitmap = CreateDib(bounds.Width, bounds.Height, out _backBits);
+                _dimBitmap = CreateDib(bounds.Width, bounds.Height, out _dimBits);
+                var dimBits = _dimBits;
                 _backPrevious = PInvoke.SelectObject(_backDc, _backBitmap);
                 _dimPrevious = PInvoke.SelectObject(_dimDc, _dimBitmap);
 
@@ -498,7 +506,7 @@ public sealed unsafe class OverlaySession : IDisposable
                 var slice = session._frozen.Layout.ToBitmap(bounds);
                 PInvoke.BitBlt(_dimDc, 0, 0, bounds.Width, bounds.Height, session._frozenDc, slice.Left, slice.Top, ROP_CODE.SRCCOPY);
                 PInvoke.GdiFlush();
-                var pixels = MemoryMarshal.Cast<byte, uint>(new Span<byte>(dimBits, bounds.Width * bounds.Height * 4));
+                var pixels = MemoryMarshal.Cast<byte, uint>(new Span<byte>(dimBits, _bufferBytes));
                 for (var i = 0; i < pixels.Length; i++)
                 {
                     var p = pixels[i];
@@ -700,9 +708,15 @@ public sealed unsafe class OverlaySession : IDisposable
             info.bmiHeader.biCompression = (uint)BI_COMPRESSION.BI_RGB;
             void* raw;
             var bitmap = PInvoke.CreateDIBSection(HDC.Null, &info, DIB_USAGE.DIB_RGB_COLORS, &raw, HANDLE.Null, 0);
-            if (bitmap.IsNull)
+            if (bitmap.IsNull || raw is null)
             {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "CreateDIBSection failed for the overlay buffer.");
+                var error = Marshal.GetLastWin32Error();
+                if (!bitmap.IsNull)
+                {
+                    PInvoke.DeleteObject(bitmap);
+                }
+
+                throw new Win32Exception(error, "CreateDIBSection failed for the overlay buffer.");
             }
 
             bits = (byte*)raw;
@@ -725,6 +739,21 @@ public sealed unsafe class OverlaySession : IDisposable
 
             _font = HFONT.Null;
             _ownsFont = false;
+
+            // The window is gone, so nothing paints any more. Let GDI finish, then zero both copies of the screen
+            // before their bitmaps are deleted. Either pointer may be null when construction failed part-way.
+            PInvoke.GdiFlush();
+            if (_backBits is not null)
+            {
+                new Span<byte>(_backBits, _bufferBytes).Clear();
+                _backBits = null;
+            }
+
+            if (_dimBits is not null)
+            {
+                new Span<byte>(_dimBits, _bufferBytes).Clear();
+                _dimBits = null;
+            }
 
             ReleaseBuffer(ref _backDc, ref _backBitmap, _backPrevious);
             ReleaseBuffer(ref _dimDc, ref _dimBitmap, _dimPrevious);

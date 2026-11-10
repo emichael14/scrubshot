@@ -118,3 +118,7 @@ HOT_KEY_MODIFIERS
 WM_HOTKEY
 HWND_MESSAGE
 WIN32_ERROR
+
+// Second launch: pass the right to take the foreground to the running instance
+AllowSetForegroundWindow
+ASFW_ANY

@@ -82,9 +82,12 @@ public sealed class CaptureCoordinator
         {
             Log.CaptureRequested(_logger, request.Mode);
             var settings = _settingsProvider();
-            if (settings.DelayMilliseconds > 0)
+            // Clamped here as well as validated in Settings: a value from policy or a hand-edited file is not
+            // range-checked on the way in, and an hours-long delay would hold the busy flag the whole time.
+            var delay = Math.Clamp(settings.DelayMilliseconds, 0, SettingsValidator.MaxDelayMilliseconds);
+            if (delay > 0)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(settings.DelayMilliseconds), _timeProvider, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromMilliseconds(delay), _timeProvider, cancellationToken).ConfigureAwait(false);
             }
 
             var layout = _layoutProvider();

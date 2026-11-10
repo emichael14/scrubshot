@@ -214,6 +214,28 @@ public class CaptureCoordinatorTests
     }
 
     [Fact]
+    public async Task An_out_of_range_delay_from_policy_or_a_hand_edited_file_is_clamped()
+    {
+        var time = new FakeTimeProvider();
+        var harness = new Harness(time) { Settings = new CaptureSettings { DelayMilliseconds = 600_000 } };
+
+        var task = harness.CaptureAsync(CaptureRequest.FullScreen);
+        await Task.Yield();
+        Assert.Equal(0, harness.Capturer.Captures);
+        time.Advance(TimeSpan.FromMilliseconds(SettingsValidator.MaxDelayMilliseconds));
+
+        Assert.Equal(CaptureOutcome.Completed, await task); // ten seconds, not ten minutes of "busy"
+    }
+
+    [Fact]
+    public async Task A_negative_delay_captures_at_once()
+    {
+        var harness = new Harness { Settings = new CaptureSettings { DelayMilliseconds = -5 } };
+
+        Assert.Equal(CaptureOutcome.Completed, await harness.CaptureAsync(CaptureRequest.FullScreen));
+    }
+
+    [Fact]
     public async Task Overlay_options_follow_the_capture_settings()
     {
         var harness = new Harness

@@ -22,7 +22,6 @@ public sealed class HotkeyService : IDisposable
 {
     private const string ClassName = "ScrubShotHotkeys";
     private const uint WorkMessage = PInvoke.WM_APP + 1;
-    private const ushort F12 = 0x7B;
     private const int ErrorClassAlreadyExists = 1410;
 
     private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(10);
@@ -41,6 +40,7 @@ public sealed class HotkeyService : IDisposable
     private HWND _window;
     private IReadOnlyList<HotkeyBinding> _bindings = [];
     private HotkeySettings? _lastSettings;
+    private IReadOnlyDictionary<HotkeyAction, SettingSource>? _lastSources;
     private Exception? _startupError;
     private volatile bool _disposed;
 
@@ -86,12 +86,15 @@ public sealed class HotkeyService : IDisposable
     }
 
     /// <summary>Replaces every registration with the hotkeys in <paramref name="settings"/> and returns the outcome per action.</summary>
-    public IReadOnlyList<HotkeyBinding> Apply(HotkeySettings settings)
+    /// <param name="settings">The four gesture strings.</param>
+    /// <param name="sources">Where each value came from, so a hotkey set by policy keeps its gesture when two actions ask for the same one.</param>
+    public IReadOnlyList<HotkeyBinding> Apply(HotkeySettings settings, IReadOnlyDictionary<HotkeyAction, SettingSource>? sources = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ObjectDisposedException.ThrowIf(_disposed, this);
         _lastSettings = settings;
-        return Invoke(() => ApplyOnThread(settings));
+        _lastSources = sources;
+        return Invoke(() => ApplyOnThread(settings, sources));
     }
 
     /// <summary>
@@ -106,7 +109,7 @@ public sealed class HotkeyService : IDisposable
             return Bindings;
         }
 
-        return _lastSettings is { } settings ? Apply(settings) : Bindings;
+        return _lastSettings is { } settings ? Apply(settings, _lastSources) : Bindings;
     }
 
     public void Dispose()
@@ -215,36 +218,19 @@ public sealed class HotkeyService : IDisposable
         }
     }
 
-    private IReadOnlyList<HotkeyBinding> ApplyOnThread(HotkeySettings settings)
+    private IReadOnlyList<HotkeyBinding> ApplyOnThread(HotkeySettings settings, IReadOnlyDictionary<HotkeyAction, SettingSource>? sources)
     {
         UnregisterAll();
         var snippingToolOwnsPrintScreen = SnippingToolPrintScreen.IsEnabled();
         var results = new List<HotkeyBinding>(4);
 
-        foreach (var (action, text) in HotkeyBindings.FromSettings(settings))
+        foreach (var check in HotkeyBindings.Precheck(settings, sources))
         {
-            if (!HotkeyGesture.TryParse(text, out var gesture))
+            var (action, text) = (check.Action, check.GestureText);
+            if (!check.CanRegister || check.Gesture is not { } gesture)
             {
-                results.Add(new HotkeyBinding(action, text, null, HotkeyConflict.InvalidGesture));
-                continue;
-            }
-
-            if (gesture.VirtualKey == F12)
-            {
-                // Reserved for the debugger at all times (Learn: RegisterHotKey remarks).
-                results.Add(new HotkeyBinding(action, text, gesture, HotkeyConflict.ReservedKey));
-                continue;
-            }
-
-            if (!gesture.IsRegistrable)
-            {
-                results.Add(new HotkeyBinding(action, text, gesture, HotkeyConflict.NeedsModifier));
-                continue;
-            }
-
-            if (_registered.ContainsValue(gesture))
-            {
-                results.Add(new HotkeyBinding(action, text, gesture, HotkeyConflict.DuplicateInSettings));
+                // Invalid text, the reserved key, a bare ordinary key or a duplicate: never handed to Windows.
+                results.Add(new HotkeyBinding(action, text, check.Gesture, check.Conflict));
                 continue;
             }
 
