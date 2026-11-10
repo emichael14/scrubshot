@@ -7,6 +7,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using ScrubShot.Capture;
 using ScrubShot.Core.Coordination;
 using ScrubShot.Core.Geometry;
+using ScrubShot.Core.Output;
 using ScrubShot.Core.Settings;
 using ScrubShot.Output;
 using Windows.Graphics.Imaging;
@@ -262,14 +263,12 @@ public class CaptureSaverTests : IDisposable
                 Directory.Delete(_root, recursive: true);
             }
 
-            if (Directory.Exists(Parent) && !Directory.EnumerateFileSystemEntries(Parent).Any())
-            {
-                Directory.Delete(Parent);
-            }
+            // The shared parent is left in place: other test classes create their own folders under it in
+            // parallel, and removing it "when empty" races with them.
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Another test class instance may be using the shared parent; leftovers are harmless fake bytes.
+            // Leftovers are harmless fake bytes.
         }
     }
 
@@ -281,7 +280,7 @@ public class CaptureSaverTests : IDisposable
     [InlineData(@"\\server\share\shots", @"\\server\share\shots")]
     public void Folder_resolves_rooted_relative_and_empty_values(string configured, string expected)
     {
-        Assert.Equal(expected, CaptureSaver.ResolveFolder(configured, @"C:\Users\x\Pictures"));
+        Assert.Equal(expected, SaveFolder.Resolve(configured, @"C:\Users\x\Pictures"));
     }
 
     [Fact]
@@ -290,7 +289,7 @@ public class CaptureSaverTests : IDisposable
         Environment.SetEnvironmentVariable("SCRUBSHOT_TEST_DIR", @"D:\Caps");
         try
         {
-            Assert.Equal(@"D:\Caps\x", CaptureSaver.ResolveFolder(@"%SCRUBSHOT_TEST_DIR%\x", @"C:\Users\x\Pictures"));
+            Assert.Equal(@"D:\Caps\x", SaveFolder.Resolve(@"%SCRUBSHOT_TEST_DIR%\x", @"C:\Users\x\Pictures"));
         }
         finally
         {
@@ -308,11 +307,11 @@ public class CaptureSaverTests : IDisposable
     [InlineData(@"%SCRUBSHOT_NOT_DEFINED%\x", @"C:\Users\x\Pictures", SaveFolderProblem.UnresolvedVariable)]
     public void Folder_values_that_would_depend_on_the_current_directory_are_refused(string configured, string? pictures, SaveFolderProblem expected)
     {
-        Assert.False(CaptureSaver.TryResolveFolder(configured, pictures, out var folder, out var problem));
+        Assert.False(SaveFolder.TryResolve(configured, pictures, out var folder, out var problem));
         Assert.Equal(expected, problem);
         Assert.Equal(string.Empty, folder);
 
-        var thrown = Assert.Throws<IOException>(() => CaptureSaver.ResolveFolder(configured, pictures));
+        var thrown = Assert.Throws<IOException>(() => SaveFolder.Resolve(configured, pictures));
         if (configured.Length > 0)
         {
             Assert.DoesNotContain(configured, thrown.Message, StringComparison.OrdinalIgnoreCase); // nothing user-specific may reach a log
@@ -322,7 +321,7 @@ public class CaptureSaverTests : IDisposable
     [Fact]
     public void An_absolute_folder_needs_no_pictures_folder()
     {
-        Assert.True(CaptureSaver.TryResolveFolder(@"C:\X", string.Empty, out var folder, out var problem));
+        Assert.True(SaveFolder.TryResolve(@"C:\X", string.Empty, out var folder, out var problem));
         Assert.Equal(@"C:\X", folder);
         Assert.Equal(SaveFolderProblem.None, problem);
     }
@@ -332,7 +331,7 @@ public class CaptureSaverTests : IDisposable
     {
         foreach (var configured in new[] { string.Empty, "Shots", @"C:\Abs", @"..\Up" })
         {
-            Assert.True(CaptureSaver.TryResolveFolder(configured, @"C:\Users\x\Pictures", out var folder, out _));
+            Assert.True(SaveFolder.TryResolve(configured, @"C:\Users\x\Pictures", out var folder, out _));
             Assert.True(Path.IsPathFullyQualified(folder), folder);
             Assert.DoesNotContain(Environment.CurrentDirectory, folder, StringComparison.OrdinalIgnoreCase);
         }
