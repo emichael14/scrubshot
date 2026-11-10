@@ -38,6 +38,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ScrubShot.Core\ScrubShot.Core.csproj" />
     <ProjectReference Include="..\ScrubShot.Capture\ScrubShot.Capture.csproj" />
+    <ProjectReference Include="..\ScrubShot.Output\ScrubShot.Output.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided (docs/decisions.md D-015).
 
+using System.Diagnostics;
 using System.Globalization;
 using H.NotifyIcon;
+using H.NotifyIcon.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -15,6 +18,7 @@ using ScrubShot.Core.Coordination;
 using ScrubShot.Core.Lifecycle;
 using ScrubShot.Core.Logging;
 using ScrubShot.Core.Settings;
+using ScrubShot.Output;
 
 namespace ScrubShot.App;
 
@@ -32,6 +36,9 @@ public sealed partial class App : Application
     private SingleInstance? _instance;
     private TaskbarIcon? _trayIcon;
     private MenuFlyoutSubItem? _monitorMenu;
+    private MenuFlyoutItem? _openLastItem;
+    private DispatcherQueue? _dispatcher;
+    private OutputSink? _output;
     private HotkeyService? _hotkeys;
     private CaptureCoordinator? _coordinator;
 
@@ -80,11 +87,14 @@ public sealed partial class App : Application
 
         SyncStartupRegistration();
 
+        _dispatcher = DispatcherQueue.GetForCurrentThread();
+        _output = new OutputSink(ClipboardWriter.Instance, CaptureSaver.Instance, () => Settings.Values.Output, _logger);
+        _output.Completed += result => _dispatcher.TryEnqueue(() => Notify(result));
         _coordinator = new CaptureCoordinator(
             new GdiScreenCapturer(),
             MonitorEnumerator.GetLayout,
             OverlayRegionSelector.Instance,
-            DiscardingCaptureSink.Instance, // replaced by the clipboard and file sink in step 7
+            _output,
             () => Settings.Values.Capture,
             _logger);
 
@@ -94,7 +104,7 @@ public sealed partial class App : Application
         // before ShowContextMenu, and PopupMenu mode rebuilds the native menu from the flyout items on every show.
         // WM_CONTEXTMENU is routed as a keyboard event there and never shows the menu. Re-check on a library upgrade.
         var refresh = new XamlUICommand();
-        refresh.ExecuteRequested += (_, _) => RefreshMonitorMenu();
+        refresh.ExecuteRequested += (_, _) => RefreshDynamicMenuItems();
         _trayIcon.RightClickCommand = refresh;
         _trayIcon.ForceCreate();
 
@@ -120,17 +130,24 @@ public sealed partial class App : Application
         menu.Items.Add(_monitorMenu);
         menu.Items.Add(Item("Repeat last region", () => Capture(CaptureRequest.RepeatLastRegion)));
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(new MenuFlyoutItem { Text = "Open last capture", IsEnabled = false }); // step 7
+        _openLastItem = Item("Open last capture", OpenLastCapture);
+        _openLastItem.IsEnabled = false;
+        menu.Items.Add(_openLastItem);
         menu.Items.Add(new MenuFlyoutItem { Text = "Settings", IsEnabled = false }); // step 8
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(Item("Exit", () => Shutdown(0)));
-        RefreshMonitorMenu();
+        RefreshDynamicMenuItems();
         return menu;
     }
 
-    /// <summary>Rebuilds the per-monitor submenu from the live layout; the tray library reads the items each time the menu opens.</summary>
-    private void RefreshMonitorMenu()
+    /// <summary>Rebuilds the per-monitor submenu from the live layout and enables Open last capture; the tray library reads the items each time the menu opens.</summary>
+    private void RefreshDynamicMenuItems()
     {
+        if (_openLastItem is { } openLast)
+        {
+            openLast.IsEnabled = _output?.HasLastCapture == true;
+        }
+
         if (_monitorMenu is null)
         {
             return;
@@ -149,10 +166,70 @@ public sealed partial class App : Application
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
-            Log.CaptureFailed(_logger, CaptureMode.Monitor, ex.HResult);
+            Log.CaptureFailed(_logger, CaptureMode.Monitor, ErrorCodes.HResultOf(ex));
         }
 
         _monitorMenu.IsEnabled = _monitorMenu.Items.Count > 0;
+    }
+
+    /// <summary>Tray balloon for the outcome (D-043). The text names the folder, never the capture content.</summary>
+    private void Notify(OutputResult result)
+    {
+        if (_trayIcon is null)
+        {
+            return;
+        }
+
+        _trayIcon.ShowNotification(
+            title: "ScrubShot",
+            message: OutputMessages.For(result),
+            icon: result.AnyFailed ? NotificationIcon.Warning : NotificationIcon.Info);
+    }
+
+    /// <summary>Opens the last saved file with its default app, or re-copies the last in-memory capture when nothing was saved.</summary>
+    private void OpenLastCapture()
+    {
+        if (_output is not { } output || output.LastResult is not { } last)
+        {
+            return;
+        }
+
+        if (last.SavedPath is { } path && File.Exists(path))
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                return;
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+            {
+                Log.OutputFailed(_logger, OutputStage.File, ErrorCodes.HResultOf(ex));
+                return;
+            }
+        }
+
+        _ = Task.Run(async () =>
+        {
+            var recopied = false;
+            try
+            {
+                recopied = await output.RecopyLastAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Log.OutputFailed(_logger, OutputStage.Clipboard, ErrorCodes.HResultOf(ex));
+            }
+
+            if (last.SavedPath is not null)
+            {
+                Log.LastCaptureFileMissing(_logger, recopied);
+            }
+
+            if (recopied)
+            {
+                _dispatcher?.TryEnqueue(() => Notify(new OutputResult(true, null, last.ExcludedFromHistory)));
+            }
+        });
     }
 
     private static MenuFlyoutItem Item(string text, Action action)
@@ -183,7 +260,7 @@ public sealed partial class App : Application
                 Log.HotkeyPressed(_logger, action);
                 Capture(CaptureRequest.FromHotkey(action));
             };
-            _hotkeys.HandlerFailed += ex => Log.HotkeyHandlerFailed(_logger, ex.HResult);
+            _hotkeys.HandlerFailed += ex => Log.HotkeyHandlerFailed(_logger, ErrorCodes.HResultOf(ex));
             var bindings = _hotkeys.Apply(Settings.Values.Hotkeys);
             Log.HotkeysApplied(_logger, bindings.Count(b => b.IsRegistered), bindings.Count(b => !b.IsRegistered));
             foreach (var binding in bindings.Where(b => !b.IsRegistered))
@@ -193,7 +270,7 @@ public sealed partial class App : Application
         }
         catch (InvalidOperationException ex)
         {
-            Log.HotkeyServiceFailed(_logger, (ex.InnerException as System.ComponentModel.Win32Exception)?.NativeErrorCode ?? ex.HResult);
+            Log.HotkeyServiceFailed(_logger, ErrorCodes.HResultOf(ex));
         }
     }
 
@@ -203,6 +280,8 @@ public sealed partial class App : Application
 
         _hotkeys?.Dispose();
         _hotkeys = null;
+        _output?.Dispose(); // clears the last in-memory capture
+        _output = null;
         _trayIcon?.Dispose();
         _trayIcon = null;
         _instance?.Dispose();
