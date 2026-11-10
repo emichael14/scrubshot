@@ -4,7 +4,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 ## 2026-11-09 (session 3)
 
-**Milestone:** 1 (foundation and capture). **All ten steps are built** on branch `milestone-1-capture`: scaffold, settings and policy, capture engine, overlay, hotkeys, tray and coordinator, output, Settings window, verification and docs, CLA. The pull request into `main` is open for the owner. The acceptance criterion itself (pixel-accurate captures on a mixed-DPI two-monitor setup, Print Screen straight to region select) still needs the owner's hardware sitting below.
+**Milestone:** 1 (foundation and capture). **All ten steps are built** on branch `milestone-1-capture`: scaffold, settings and policy, capture engine, overlay, hotkeys, tray and coordinator, output, Settings window, verification and docs, CLA. Pull request #2 into `main` is open for the owner. The acceptance criterion itself (pixel-accurate captures on a mixed-DPI two-monitor setup, Print Screen straight to region select) still needs the owner's hardware sitting below.
 
 **Done this session**
 
@@ -18,7 +18,7 @@ Updated at the end of every session. Newest entry first. Keep each entry short: 
 
 **Blocked or waiting on the owner**
 
-- Review and merge the Milestone 1 pull request. Never merged by the assistant.
+- Review and merge pull request #2 (Milestone 1). Never merged by the assistant.
 - Run the hardware tests below in one sitting ([guide](testing/milestone-1-checklist.md)) and report the results; the mixed-DPI rows (H1, H2, H5, H6, H19) are the acceptance criterion.
 - Read `docs/CLA.md` before merging: it is a legal text drafted for this project and has not been reviewed by a lawyer. After merging, create the signatures branch once: `git push origin origin/main:refs/heads/cla-signatures`.
 - Delete the old `.local/` folder in the repo root (the session sandbox refuses deletes).
