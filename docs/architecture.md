@@ -17,16 +17,17 @@ Target architecture for the first six milestones. Projects marked *planned* do n
 | --- | --- | --- |
 | `src/ScrubShot.Core` | Shared models, settings schema and JSON store, policy resolution, file naming patterns, capture geometry, selection model, hotkey gestures, capture requests, single-instance and launch-at-startup helpers, logging abstractions. No Windows UI references. | Milestone 1 |
 | `src/ScrubShot.Capture` | Monitor enumeration and DPI handling, `IScreenCapturer` with the GDI implementation, `FrozenScreen`, the Win32 selection overlay, window picker, cursor compositing, the global hotkey service, and the `CaptureCoordinator` that runs a request from freeze to the output sink. Win32 only, no WinUI. | Milestone 1 |
-| `src/ScrubShot.App` | WinUI 3 application: tray icon and menu, wiring of hotkeys to the coordinator, output sinks (clipboard, file, print), post-capture menu, editor, settings window, notifications, update checker. | Milestone 1 onward |
+| `src/ScrubShot.Output` | Where a finished capture leaves the process: PNG and JPEG encoding, the Win32 clipboard writer with history and cloud-sync exclusion, the file saver, and the `OutputSink` that applies the default action and keeps the last capture for Open last capture. Win32 only, no WinUI. | Milestone 1 |
+| `src/ScrubShot.App` | WinUI 3 application: tray icon and menu, wiring of hotkeys to the coordinator and of the coordinator to the output sink, notifications, post-capture menu, editor, settings window, update checker. | Milestone 1 onward |
 | `src/ScrubShot.Detection` | OCR wrapper over Windows.Media.Ocr, detector pipeline, layer-1 rule detectors, context-label matching, the layer-2 local model runner (ONNX Runtime), hit merging, sensitivity profiles. | *planned, Milestone 3* |
 | `src/ScrubShot.Clipboard` | Clipboard monitor, paste-destination detection (foreground app, browser site), just-in-time text scrubbing and restore. | *planned, Milestone 4* |
 | `src/ScrubShot.AddIns` | Add-on contract, verification (signature or hash), and the add-ons: faces, QR and barcodes, file and PDF scrubbing, metadata stripping. | *planned, Milestone 5* |
 | `tests/ScrubShot.Tests` | xUnit tests for Core, Capture geometry and Detection, plus the fixture corpus with expected detections and the no-sensitive-data-in-logs test. | Milestone 1 onward |
-| `tools/CaptureCheck` | Console tool that captures all monitors to PNG and prints the monitor table, for pixel-accuracy checks on real hardware. | Milestone 1 |
+| `tools/CaptureCheck` | Console tool for checks on real hardware: captures all monitors to PNG and prints the monitor table; drives the selection overlay, the hotkey service and the whole coordinator flow (including the real output sink into a folder of your choice). | Milestone 1 |
 | `deploy/` | Installer, Intune Win32 package recipe, ADMX/ADML policy templates, sample config. | *planned, Milestone 6* |
 | `docs/` | Decisions log, architecture, milestone plans, detection catalog, admin guide. | ongoing |
 
-Dependency direction: App → Capture, Detection, Clipboard, AddIns → Core. Nothing references App.
+Dependency direction: App → Output → Capture → Core; App → Detection, Clipboard, AddIns → Core. Nothing references App.
 
 ## Capture pipeline
 
@@ -52,7 +53,7 @@ Stage notes:
 - **OCR and detection** run off the UI thread. OCR produces words with boxes. Two layers run on that text: layer 1 is the rule detectors (regex, validators, entropy, context labels), layer 2 is a small local named-entity / PII model run through ONNX Runtime on the CPU, there to catch what rules cannot (person names, street addresses, unlabeled secrets). Visual add-ons (faces, QR codes) receive the image. Layer 2 ships with the app, is on by default, and has a setting and a policy (`Scrubbing.AiLayerEnabled`) to turn it off; layer 1 keeps running either way. The model is chosen by a benchmark against the fixture corpus before Milestone 3 (see [milestone-3-notes.md](milestone-3-notes.md), D-029).
 - **Merging** collapses overlapping hits from both layers into one scrub region, keeps the highest-confidence type, and applies the active sensitivity level (Strict, Balanced, Relaxed, Custom) to decide what is scrubbed by default. Strict accepts model hits at a low confidence threshold, Balanced at a higher one, Relaxed only when a rule agrees, Custom per type.
 - **Rendering** produces a new bitmap. The original stays alive only while the editor session is open so the user can toggle individual items; it is disposed when the session ends.
-- **Output** receives only the scrubbed bitmap. Clipboard writes exclude themselves from Windows clipboard history and cloud sync by default.
+- **Output** receives only the scrubbed bitmap (until Milestone 3, the capture itself). Clipboard writes carry PNG and `CF_DIB` and exclude themselves from Windows clipboard history and cloud sync by default (D-044). Saves go to the configured folder under the configured name pattern with `FileMode.CreateNew`; nothing is written anywhere else (D-043).
 
 ## Detector contract
 
