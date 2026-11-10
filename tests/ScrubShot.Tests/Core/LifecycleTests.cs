@@ -8,7 +8,7 @@ namespace ScrubShot.Tests.Core;
 public class SingleInstanceTests
 {
     [Fact]
-    public async Task Second_acquire_fails_and_signals_the_first()
+    public void Second_acquire_fails_and_signals_the_first()
     {
         var name = $"ScrubShotTest-{Guid.NewGuid():N}";
         using var activated = new ManualResetEventSlim(false);
@@ -17,27 +17,37 @@ public class SingleInstanceTests
         first.ActivationRequested += activated.Set;
         first.Start();
 
-        // A mutex is re-entrant for its owning thread, so the "second process" must come from another thread.
-        using var second = await Task.Run(() => SingleInstance.TryAcquire(name), TestContext.Current.CancellationToken);
+        // A mutex is re-entrant for its owning thread, so the "second process" must come from a different thread,
+        // and a dedicated one: a Task.Run work item can land on the very pool thread that took the mutex.
+        using var second = OnNewThread(() => SingleInstance.TryAcquire(name));
 
         Assert.Null(second);
         Assert.True(activated.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken), "the first instance was not signalled");
     }
 
     [Fact]
-    public async Task Signal_before_start_is_delivered_once_started()
+    public void Signal_before_start_is_delivered_once_started()
     {
         var name = $"ScrubShotTest-{Guid.NewGuid():N}";
         using var activated = new ManualResetEventSlim(false);
         using var first = SingleInstance.TryAcquire(name);
         Assert.NotNull(first);
-        using var second = await Task.Run(() => SingleInstance.TryAcquire(name), TestContext.Current.CancellationToken);
+        using var second = OnNewThread(() => SingleInstance.TryAcquire(name));
         Assert.Null(second);
 
         first.ActivationRequested += activated.Set;
         first.Start();
 
         Assert.True(activated.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken), "the early signal was lost");
+    }
+
+    private static T OnNewThread<T>(Func<T> work)
+    {
+        T result = default!;
+        var thread = new Thread(() => result = work());
+        thread.Start();
+        thread.Join();
+        return result;
     }
 
     [Fact]
