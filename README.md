@@ -1,5 +1,7 @@
 # ScrubShot
 
+<img src="assets/icon/scrubshot-128.png" width="96" height="96" alt="ScrubShot icon: three glossy aqua soap bubbles" align="right">
+
 <!--
   Demo GIF placeholder. Target: docs/media/demo.gif, about 10 seconds, under 5 MB.
   Show: Print Screen -> drag a region -> aqua scrub outlines appear -> Copy -> paste shows the blurred result.
@@ -12,15 +14,20 @@ ScrubShot gives you the full Greenshot-style capture and annotation workflow wit
 
 For IT professionals and employees in regulated industries whose organizations want them to use AI tools without leaking company data.
 
-> **Status: pre-alpha.** Milestone 1 (foundation and capture) is in progress. Nothing is ready to install yet. See the [roadmap](#roadmap).
+> **Status: pre-alpha.** Milestone 1 (foundation and capture) is built and in acceptance testing: the tray app captures, copies and saves, and has a first Settings window. **It does not scrub anything yet**; detection and blurring arrive with Milestone 3, so do not rely on this build for sensitive screens. Nothing is packaged for install. See [what works today](#what-works-today) and the [roadmap](#roadmap).
 
 ## Privacy commitments
 
-ScrubShot is built to the commitments below. Until the milestone that implements each one ships, read them as design intent rather than verified behavior. Each will be covered by tests and documented here as it lands.
+ScrubShot is built to the commitments below. Until the milestone that implements each one ships, read them as design intent rather than verified behavior. Each is covered by tests and documented here as it lands; the note under each says where it stands.
 
 - **All processing happens locally.** No telemetry, analytics, crash reporting or cloud APIs. The only network call ScrubShot will make is an optional, configurable update check against GitHub Releases, which admins can turn off. ScrubShot is designed to keep working when blocked at the firewall.
+  *Today:* the code makes no network calls at all, and a test fails the build if a shipped library starts referencing a networking assembly.
 - **ScrubShot never writes an unscrubbed image to disk while auto-scrub is on.** The original capture is held in memory for the life of an editor session and cleared when the session ends. Copy and Save output only the scrubbed result.
-- **Logs never contain captured content.** Opt-in debug logs record events, timings, versions and errors, never text, images, file names of captures or detected values. A test is planned that fails the build if that changes.
+  *Today:* auto-scrub does not exist yet (Milestone 3), so the current build copies or saves exactly what was on screen. It writes a file only when Save is the chosen action, into the folder you configured, and never writes temporary files. The frozen screen and the last capture live in memory only and are zeroed when replaced and on exit.
+- **Captures stay out of clipboard history.** By default, an image ScrubShot copies is marked so that Windows keeps it out of clipboard history (Win+V) and does not sync it to other devices.
+  *Today:* implemented and tested; the markers are written before the image, and a failed write empties the clipboard rather than leaving an unmarked capture.
+- **Logs never contain captured content.** Opt-in debug logs record events, timings, versions and errors, never text, images, file names of captures or detected values.
+  *Today:* the logging API cannot accept text at all, and a test fails the build if that changes. No log file is written yet; the opt-in debug log arrives with the Advanced settings.
 
 ## Limitations
 
@@ -31,13 +38,25 @@ ScrubShot is built to the commitments below. Until the milestone that implements
 
 ## Built for IT admins
 
-These are design commitments as well; the policy layer arrives with Milestone 5.
+These are design commitments as well. Registry policy with locks already works for the settings that exist today; the ADMX and ADML templates and the remaining settings arrive with Milestone 5.
 
 - **Safe by default.** Default sensitivity is Strict and protective settings default to on, so an unmanaged install is already conservative.
 - **Every setting is designed to be admin-enforceable** through Windows policy at `HKLM\Software\Policies\ScrubShot` and `HKCU\Software\Policies\ScrubShot`, with ADMX/ADML templates, so Intune, Group Policy or any MDM can set and lock it. Precedence: machine policy, then user policy, then user settings, then defaults. Locked settings show a lock icon and are read-only in the UI.
-- **Lockable examples.** Sensitivity level, enabled detection types, custom patterns, review screen forced on, auto-scrub forced on, clipboard monitor and its destination lists, clipboard-history exclusion, update behavior, which add-ons are allowed or pre-installed.
+- **Lockable examples.** Sensitivity level, enabled detection types, the AI detection layer, custom patterns, review screen forced on, auto-scrub forced on, clipboard monitor and its destination lists, clipboard-history exclusion, update behavior, which add-ons are allowed or pre-installed.
 - **Deployment.** Planned: one installer with silent switches, an Intune Win32 package recipe, a portable build and an MSIX package. Updates can be automatic, notify-only or off; admins can force off and deploy versions themselves.
-- **Verifiable network behavior.** Every outbound call will be listed in this README so security teams can confirm there is exactly one and block it if they choose.
+- **Verifiable network behavior.** Every outbound call will be listed in this README so security teams can confirm there is exactly one and block it if they choose. Today there are none.
+
+## What works today
+
+Milestone 1, built from source (see [Building from source](#building-from-source)):
+
+- **Tray app.** ScrubShot runs in the notification area with no main window. The menu offers every capture mode, Open last capture, Settings and Exit. Starting it a second time opens Settings in the running instance.
+- **Capture.** Region, window, full screen, a specific monitor and repeat last region. The screen is frozen first, then dimmed for selection, with a magnifier, coordinates and keyboard-only selection (Space or Enter to anchor, arrows to size, Enter to confirm, Esc to cancel).
+- **Hotkeys.** Print Screen for region, Alt, Ctrl and Shift with Print Screen for window, full screen and repeat. All four can be changed in Settings and take effect at once. ScrubShot reports a hotkey it could not get and why; on Windows 11, where Print Screen opens the Snipping Tool by default, Settings offers to turn that Windows option off for you.
+- **Output.** Copy to the clipboard (PNG and bitmap), save as PNG or JPG with a file name pattern, or both. A notification names what happened and any part that failed.
+- **Settings.** General, Hotkeys and Capture pages. A setting fixed by registry policy shows a lock and cannot be changed.
+
+Not there yet: the post-capture menu, the editor, OCR, detection and scrubbing, the clipboard monitor, add-ons, an installer.
 
 ## What it will do
 
@@ -47,11 +66,11 @@ These are design commitments as well; the policy layer arrives with Milestone 5.
 
 **Editor.** Crop, resize, rotate, shapes, arrows, freehand, text, speech bubbles, step counters, highlighters, manual blur and pixelate, effects (shadow, border, torn edge). Every annotation stays editable. Full undo and redo.
 
-**Auto-scrub.** Local OCR plus a detector pipeline for personal data, financial data, Microsoft identifiers and secrets, third-party API tokens and credentials. Context labels ("Tenant ID", "Secret", "Key") raise confidence. Sensitivity levels Strict, Balanced, Relaxed and Custom. A side panel lists each scrubbed item with a masked preview and a keep/reveal toggle. Redaction styles: blur, pixelate, solid block, labeled block.
+**Auto-scrub.** Local OCR plus two detection layers over the same text. Layer 1 is rules: patterns and validators for personal data, financial data, Microsoft identifiers and secrets, third-party API tokens and credentials, with context labels ("Tenant ID", "Secret", "Key") raising confidence. Layer 2 is a small local AI model (named-entity and PII recognition, run on the CPU through ONNX Runtime, shipped with the app, on by default, switchable by setting and policy) that catches what rules cannot: person names, street addresses, and secrets with no label or known format. Both layers merge into one set of scrub regions with confidence scores, and sensitivity levels Strict, Balanced, Relaxed and Custom decide what is scrubbed. A side panel lists each scrubbed item with a masked preview and a keep/reveal toggle. Redaction styles: blur, pixelate, solid block, labeled block.
 
 **Clipboard monitor (optional).** Scrubs text based on where you paste, not when you copy. Risky and trusted destination lists, per-type switches, silent/notify/ask behaviors.
 
-**Add-ons (optional, local).** Name and address detection, face detection, QR and barcode detection, file and PDF scrubbing, image metadata stripping.
+**Add-ons (optional, local).** Face detection, QR and barcode detection, file and PDF scrubbing, image metadata stripping.
 
 ## Architecture
 
@@ -70,28 +89,37 @@ dotnet test
 dotnet run --project src/ScrubShot.App
 ```
 
-The solution lands with Milestone 1. Until then these commands are the target, not the current state.
+What to expect on first run:
+
+- No window opens. Look for the three-bubble icon in the notification area; Windows 11 puts new icons in the overflow area (the arrow next to the clock) until you pin them under Settings, Personalization, Taskbar, Other system tray icons.
+- Right-click the icon for the menu. Settings is there, and so is Exit.
+- "Start ScrubShot when you sign in" is on by default and registers the build you just ran. Turn it off on the General page if you are only trying it out.
+- If Print Screen opens the Windows Snipping Tool instead of ScrubShot, open Settings, Hotkeys: the page explains why and offers the fix. Another screenshot tool that is running may hold the other Print Screen combinations; the page shows that too.
+
+`tools/CaptureCheck` is a console tool for checking the capture engine on real hardware; run it with `--help` for its modes. The manual checks that need two monitors are described in [docs/testing/milestone-1-checklist.md](docs/testing/milestone-1-checklist.md).
 
 ## Roadmap
 
 Each milestone ends with a working, runnable app, passing tests and an updated README.
 
-- [ ] **1. Foundation and capture.** Tray app, hotkeys with conflict detection, frozen overlay, all capture modes, mixed-DPI correctness, copy and save, CLA Assistant setup. ([plan](docs/milestone-1-plan.md))
+- [ ] **1. Foundation and capture.** Tray app, hotkeys with conflict detection, frozen overlay, all capture modes, mixed-DPI correctness, copy and save, a first Settings window, CLA Assistant setup. Built; the mixed-DPI acceptance tests on real hardware are pending. ([plan](docs/milestone-1-plan.md))
 - [ ] **2. Post-capture menu and editor.** Customizable menu, full editor toolset, effects, undo/redo, print.
-- [ ] **3. Auto-scrub engine.** OCR, core detectors, context labels, sensitivity levels, side panel, redaction styles, review screen.
+- [ ] **3. Auto-scrub engine.** OCR, rule detectors, context labels, the local AI detection layer (model chosen by benchmark first), sensitivity levels, side panel, redaction styles, review screen.
 - [ ] **4. Clipboard monitor.** Paste-destination detection, risky/trusted lists, per-type switches.
-- [ ] **5. Settings, policy and add-ons.** All settings tabs, ADMX templates, registry policy with locks, add-on framework.
+- [ ] **5. Settings, policy and add-ons.** All settings tabs, ADMX templates, registry policy with locks, add-on framework (faces, QR and barcodes, files and PDFs, metadata).
 - [ ] **6. Packaging and launch.** Installer, silent install, Intune recipe, portable build, code signing, update modes, admin guide, contributing guide.
 
 ## Project documents
 
+- [Specification](SPEC.md): what ScrubShot does, its constraints and the build order.
 - [Architecture](docs/architecture.md): projects, boundaries and the capture pipeline.
 - [Decisions log](docs/decisions.md): every design decision not covered by the spec, with reasons.
-- [Milestone 1 plan](docs/milestone-1-plan.md)
+- [Milestone 1 plan](docs/milestone-1-plan.md) and its [manual test sitting](docs/testing/milestone-1-checklist.md)
+- [Contributor license agreement](docs/CLA.md)
 
 ## Contributing
 
-Bug reports, detection gaps and feature ideas are welcome now through the [issue templates](.github/ISSUE_TEMPLATE). Code contributions open once the contributor license agreement is in place (CLA Assistant, planned for Milestone 1); pull requests opened before then will be held until it is. Please never attach screenshots or logs containing real sensitive data; use obviously fake values.
+Bug reports, detection gaps and feature ideas are welcome through the [issue templates](.github/ISSUE_TEMPLATE). Code contributions are welcome too. The first time you open a pull request, the CLA Assistant asks you to accept the [contributor license agreement](docs/CLA.md) with a comment on the pull request; you keep the copyright in your work, and the agreement lets the project stay GPL-3.0-only while leaving the project owner free to offer it under other terms as well. ScrubShot is written from scratch: do not submit code copied from another screenshot tool. Please never attach screenshots or logs containing real sensitive data; use obviously fake values.
 
 ## Security
 

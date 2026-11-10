@@ -25,3 +25,7 @@
 *.ico binary
 *.onnx binary
 *.pdf binary
+
+# Icon assets
+*.svg text
+*.ico binary

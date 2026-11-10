@@ -1,0 +1,31 @@
+<Project>
+  <!-- Central package version management. Project files reference packages without a Version attribute. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Windows App SDK 2.x (WinUI 3). See docs/decisions.md D-002. -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="2.6.4" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+
+    <!-- Win32 interop through generated P/Invoke. MIT. D-008. -->
+    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.367" />
+
+    <!-- Tray icon for WinUI 3. MIT. D-009. -->
+    <PackageVersion Include="H.NotifyIcon.WinUI" Version="2.4.1" />
+
+    <!-- MVVM base types (ObservableObject, RelayCommand) for the app's view models. MIT. Approved in the Milestone 1 plan. -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+
+    <!-- Logging abstractions only; no provider is wired until the opt-in file sink ships. D-014. -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+
+    <!-- Tests. xUnit v3 on Microsoft.Testing.Platform. Apache-2.0, development only. -->
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+
+    <!-- tools/IconBuild only: renders the SVG icon sources to PNG and ICO. MIT, development only, never shipped. -->
+    <PackageVersion Include="Svg.Skia" Version="5.2.3" />
+  </ItemGroup>
+</Project>

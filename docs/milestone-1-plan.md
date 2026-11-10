@@ -1,6 +1,6 @@
 # Milestone 1 plan: foundation and capture
 
-**Status:** proposed 2026-11-01, awaiting owner review. Work starts on branch `milestone-1-capture` once approved.
+**Status:** approved by the owner on 2026-11-01. In progress on branch `milestone-1-capture`; steps 1 (scaffold), 2 (Core settings and policy), 3 (capture engine, with `tools/CaptureCheck` pulled forward from step 9, D-037), 4 (selection overlay), 5 (hotkeys), 6 (tray menu, coordinator, single instance, startup), 7 (output), 8 (Settings window), 9 (verification, docs, pull request) and 10 (CLA) complete; the hardware acceptance tests are with the owner. Progress is tracked in `docs/status.md`.
 
 ## Goal
 
@@ -119,4 +119,8 @@ Details and rationale are in `docs/decisions.md` entries D-003 through D-014. In
 
 ## Out of scope for Milestone 1
 
-Post-capture menu, editor, OCR and detection, clipboard monitor, full Settings tabs, ADMX templates, add-ons, installer, MSIX, code signing, update check, final icon and bubble animation.
+Post-capture menu, editor, OCR and detection, clipboard monitor, full Settings tabs, ADMX templates, add-ons, installer, MSIX, code signing, update check, bubble animation. The icon landed early (D-028).
+
+## Forward notes
+
+- Spec revision v1.1 (2026-11-01, D-029) makes a small local AI model a core detection layer in Milestone 3, with a model benchmark and owner decision before that milestone starts. See `docs/milestone-3-notes.md`. Nothing in Milestone 1 changes, except that the settings model built in step 2 should reserve the `Scrubbing.AiLayerEnabled` setting name so the policy value name is stable from the first release.

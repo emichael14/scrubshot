@@ -1,10 +1,13 @@
 # ScrubShot: Claude Code project instructions
 
-ScrubShot is a free, open-source Windows screenshot tool (C#, .NET 10, WinUI 3) that detects and blurs sensitive data locally before an image or text leaves the PC. The authoritative requirements are the build spec; its local path is in `CLAUDE.local.md`. This file covers how to work in this repo. The spec covers what to build.
+ScrubShot is a free, open-source Windows screenshot tool (C#, .NET 10, WinUI 3) that detects and blurs sensitive data locally before an image or text leaves the PC. The authoritative requirements are in `SPEC.md`, the public source of truth. A private, unedited copy with owner context lives at `CLAUDE.local-spec.md` (gitignored); read it when present, but never quote it into committed files. This file covers how to work in this repo. The spec covers what to build.
 
 ## Start of every session
 
-Work through this list first. If a check fails, report it to the owner rather than working around it.
+Work through this list first. If a check fails, decide by this rule:
+
+- **Fix it yourself and report what you did** when the issue is routine, reversible dev tooling: package feeds (nuget.org only), project templates, SDK workloads, local build configuration.
+- **Stop and ask the owner first** for anything that needs admin rights, changes system or security settings, installs software outside the dev toolchain, touches anything outside `C:\Dev`, or adds a package source other than nuget.org.
 
 1. **Read state.** `docs/status.md` (where things stand and what is next), then the current milestone plan in `docs/`, then skim `docs/decisions.md`. Before starting a new milestone, read the whole spec.
 2. **Git.** `git status`, `git branch --show-current`, `git fetch origin`. Never work on `main`. The working branch must not be behind its remote, and the tree should be clean or explained in `docs/status.md`.
@@ -46,6 +49,15 @@ Work through this list first. If a check fails, report it to the owner rather th
 - Tags and releases only when the owner asks.
 - Creating new public surfaces (repositories, releases) needs the owner; the permission classifier blocks it from autonomous sessions.
 
+## Review tiers (owner rule, 2026-11-01)
+
+Reviews cost usage; scope them by what the code can leak or break.
+
+- **Full adversarial review** (several lenses, independent refuters per finding) only for privacy- or security-critical code: detection and scrubbing, clipboard handling, logging, anything that writes images or files to disk, settings and policy enforcement, update and network code.
+- **Light review** for everything else: one lens and one refuter, focused on correctness and obvious bugs.
+- **One full review of the whole milestone** before opening the milestone PR.
+- Unsure which tier applies? Ask the owner with AskUserQuestion before launching it.
+
 ## Conventions
 
 - .NET 10 LTS, `net10.0-windows10.0.26100.0`, minimum OS 10.0.19041. Windows App SDK 2.x. Unpackaged and self-contained is the primary deployment; MSIX is secondary.
@@ -64,4 +76,6 @@ Work through this list first. If a check fails, report it to the owner rather th
 | Milestone plans | `docs/milestone-N-*.md` |
 | Decisions and rationale | `docs/decisions.md` |
 | Architecture and pipeline | `docs/architecture.md` |
-| Machine-specific notes, spec path, tooling quirks | `CLAUDE.local.md` (not committed) |
+| Product specification (public) | `SPEC.md` |
+| Private spec copy with owner context | `CLAUDE.local-spec.md` (not committed) |
+| Machine-specific notes, tooling quirks | `CLAUDE.local.md` (not committed) |

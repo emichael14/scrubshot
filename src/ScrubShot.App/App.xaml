@@ -1,0 +1,23 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided (docs/decisions.md D-015). -->
+<Application
+    x:Class="ScrubShot.App.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:tb="using:H.NotifyIcon">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- The menu is built in code (App.xaml.cs, BuildTrayMenu) because the monitor submenu changes with the display layout. -->
+            <tb:TaskbarIcon
+                x:Key="TrayIcon"
+                ToolTipText="ScrubShot"
+                IconSource="ms-appx:///Assets/scrubshot.ico"
+                ContextMenuMode="PopupMenu"
+                NoLeftClickDelay="True" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

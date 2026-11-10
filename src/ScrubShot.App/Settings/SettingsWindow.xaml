@@ -1,0 +1,326 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Copyright (C) 2026 ScrubShot contributors. Ownership entity to be decided (docs/decisions.md D-015). -->
+<Window
+    x:Class="ScrubShot.App.Settings.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ScrubShot.App.Settings">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="Root">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- The control's title becomes the window title (taskbar, Alt+Tab), so it carries the full name. -->
+        <TitleBar x:Name="AppTitleBar" Title="ScrubShot Settings">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="ms-appx:///Assets/scrubshot-32.png" />
+            </TitleBar.IconSource>
+        </TitleBar>
+
+        <NavigationView
+            x:Name="Nav"
+            Grid.Row="1"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleButtonVisible="False"
+            IsSettingsVisible="False"
+            OpenPaneLength="200"
+            PaneDisplayMode="Left"
+            SelectionChanged="OnNavigationSelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="General" Tag="General">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Hotkeys" Tag="Hotkeys">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE765;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Capture" Tag="Capture">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE722;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel
+                    MaxWidth="860"
+                    Margin="32,20,32,32"
+                    Spacing="4">
+                    <TextBlock
+                        x:Name="PageTitle"
+                        Margin="0,0,0,12"
+                        Style="{ThemeResource TitleTextBlockStyle}" />
+
+                    <InfoBar
+                        Margin="0,0,0,8"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.SaveFailed, Mode=OneWay}"
+                        Message="The settings file could not be written, so the change was not saved."
+                        Severity="Error" />
+                    <InfoBar
+                        Margin="0,0,0,8"
+                        IsClosable="False"
+                        IsOpen="{x:Bind ViewModel.ResetWasPartial, Mode=OneWay}"
+                        Message="Some shortcuts were not reset because their default is already used by another shortcut, which may be managed by your organization."
+                        Severity="Warning" />
+
+                    <!-- General -->
+                    <StackPanel x:Name="GeneralPanel" Spacing="4">
+                        <local:SettingCard
+                            Description="Adds ScrubShot to the apps that start with Windows."
+                            Header="Start ScrubShot when you sign in"
+                            IsLocked="{x:Bind ViewModel.IsLocked('General.LaunchAtStartup'), Mode=OneWay}">
+                            <ToggleSwitch
+                                MinWidth="0"
+                                AutomationProperties.Name="Start ScrubShot when you sign in"
+                                IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard Header="App theme" IsLocked="{x:Bind ViewModel.IsLocked('General.Theme'), Mode=OneWay}">
+                            <ComboBox
+                                Width="220"
+                                AutomationProperties.Name="App theme"
+                                SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
+                                <ComboBoxItem Content="Use system setting" />
+                                <ComboBoxItem Content="Light" />
+                                <ComboBoxItem Content="Dark" />
+                            </ComboBox>
+                        </local:SettingCard>
+
+                        <TextBlock
+                            Margin="0,16,0,4"
+                            Style="{ThemeResource BodyStrongTextBlockStyle}"
+                            Text="After a capture" />
+
+                        <local:SettingCard
+                            Description="What ScrubShot does with a capture as soon as you take it."
+                            Header="Default action"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Output.DefaultAction'), Mode=OneWay}">
+                            <ComboBox
+                                Width="220"
+                                AutomationProperties.Name="Default action"
+                                SelectedIndex="{x:Bind ViewModel.DefaultActionIndex, Mode=TwoWay}">
+                                <ComboBoxItem Content="Copy to the clipboard" />
+                                <ComboBoxItem Content="Save to a file" />
+                                <ComboBoxItem Content="Copy and save" />
+                            </ComboBox>
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="Captures that ScrubShot copies stay out of Windows clipboard history (Win+V) and are not synced to your other devices."
+                            Header="Keep captures out of clipboard history"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Output.ExcludeFromClipboardHistory'), Mode=OneWay}">
+                            <ToggleSwitch
+                                MinWidth="0"
+                                AutomationProperties.Name="Keep captures out of clipboard history"
+                                IsOn="{x:Bind ViewModel.ExcludeFromClipboardHistory, Mode=TwoWay}" />
+                        </local:SettingCard>
+
+                        <TextBlock
+                            Margin="0,16,0,4"
+                            Style="{ThemeResource BodyStrongTextBlockStyle}"
+                            Text="Saved files" />
+
+                        <local:SettingCard
+                            Description="{x:Bind ViewModel.SaveFolderNote, Mode=OneWay}"
+                            Error="{x:Bind ViewModel.ErrorFor('Output.SaveFolder'), Mode=OneWay}"
+                            Header="Save folder"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Output.SaveFolder'), Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox
+                                    Width="300"
+                                    AutomationProperties.Name="Save folder"
+                                    IsSpellCheckEnabled="False"
+                                    KeyDown="OnTextBoxKeyDown"
+                                    Tag="SaveFolder"
+                                    Text="{x:Bind ViewModel.SaveFolder, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                <Button Click="OnBrowseFolderClick" Content="Browse" />
+                            </StackPanel>
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="{x:Bind ViewModel.FileNameNote, Mode=OneWay}"
+                            Header="File name"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Output.FileNamePattern'), Mode=OneWay}">
+                            <TextBox
+                                Width="300"
+                                AutomationProperties.Name="File name pattern"
+                                IsSpellCheckEnabled="False"
+                                KeyDown="OnTextBoxKeyDown"
+                                Tag="FileNamePattern"
+                                Text="{x:Bind ViewModel.FileNamePattern, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard Header="File format" IsLocked="{x:Bind ViewModel.IsLocked('Output.Format'), Mode=OneWay}">
+                            <ComboBox
+                                Width="220"
+                                AutomationProperties.Name="File format"
+                                SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}">
+                                <ComboBoxItem Content="PNG (exact pixels)" />
+                                <ComboBoxItem Content="JPG (smaller files)" />
+                            </ComboBox>
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="Used when the file format is JPG. Higher is sharper and larger."
+                            Error="{x:Bind ViewModel.ErrorFor('Output.JpgQuality'), Mode=OneWay}"
+                            Header="JPG quality"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Output.JpgQuality'), Mode=OneWay}">
+                            <NumberBox
+                                Width="160"
+                                AutomationProperties.Name="JPG quality"
+                                IsEnabled="{x:Bind ViewModel.IsJpg, Mode=OneWay}"
+                                Maximum="100"
+                                Minimum="1"
+                                SpinButtonPlacementMode="Inline"
+                                Value="{x:Bind ViewModel.JpgQuality, Mode=TwoWay}" />
+                        </local:SettingCard>
+                    </StackPanel>
+
+                    <!-- Hotkeys -->
+                    <StackPanel
+                        x:Name="HotkeysPanel"
+                        Spacing="4"
+                        Visibility="Collapsed">
+                        <InfoBar
+                            Title="Print Screen opens the Windows Snipping Tool"
+                            Margin="0,0,0,8"
+                            IsClosable="False"
+                            IsOpen="{x:Bind ViewModel.ShowSnippingToolFix, Mode=OneWay}"
+                            Message="Windows is set to open its own screen capture when you press Print Screen, so ScrubShot does not receive the key. ScrubShot can turn that Windows setting off for you. You can turn it back on under Settings, Accessibility, Keyboard."
+                            Severity="Warning">
+                            <InfoBar.ActionButton>
+                                <Button Command="{x:Bind ViewModel.FixSnippingToolCommand}" Content="Turn it off" />
+                            </InfoBar.ActionButton>
+                        </InfoBar>
+
+                        <local:SettingCard
+                            Description="{x:Bind ViewModel.HotkeyNote('Region'), Mode=OneWay}"
+                            Error="{x:Bind ViewModel.HotkeyProblem('Region'), Mode=OneWay}"
+                            Header="Capture region"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Hotkeys.Region'), Mode=OneWay}">
+                            <TextBox
+                                Width="240"
+                                AutomationProperties.Name="Hotkey for capture region"
+                                IsSpellCheckEnabled="False"
+                                KeyDown="OnTextBoxKeyDown"
+                                Tag="RegionHotkey"
+                                Text="{x:Bind ViewModel.RegionHotkey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="{x:Bind ViewModel.HotkeyNote('Window'), Mode=OneWay}"
+                            Error="{x:Bind ViewModel.HotkeyProblem('Window'), Mode=OneWay}"
+                            Header="Capture window"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Hotkeys.Window'), Mode=OneWay}">
+                            <TextBox
+                                Width="240"
+                                AutomationProperties.Name="Hotkey for capture window"
+                                IsSpellCheckEnabled="False"
+                                KeyDown="OnTextBoxKeyDown"
+                                Tag="WindowHotkey"
+                                Text="{x:Bind ViewModel.WindowHotkey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="{x:Bind ViewModel.HotkeyNote('FullScreen'), Mode=OneWay}"
+                            Error="{x:Bind ViewModel.HotkeyProblem('FullScreen'), Mode=OneWay}"
+                            Header="Capture full screen"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Hotkeys.FullScreen'), Mode=OneWay}">
+                            <TextBox
+                                Width="240"
+                                AutomationProperties.Name="Hotkey for capture full screen"
+                                IsSpellCheckEnabled="False"
+                                KeyDown="OnTextBoxKeyDown"
+                                Tag="FullScreenHotkey"
+                                Text="{x:Bind ViewModel.FullScreenHotkey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="{x:Bind ViewModel.HotkeyNote('RepeatLastRegion'), Mode=OneWay}"
+                            Error="{x:Bind ViewModel.HotkeyProblem('RepeatLastRegion'), Mode=OneWay}"
+                            Header="Repeat last region"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Hotkeys.RepeatLastRegion'), Mode=OneWay}">
+                            <TextBox
+                                Width="240"
+                                AutomationProperties.Name="Hotkey for repeat last region"
+                                IsSpellCheckEnabled="False"
+                                KeyDown="OnTextBoxKeyDown"
+                                Tag="RepeatLastRegionHotkey"
+                                Text="{x:Bind ViewModel.RepeatLastRegionHotkey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </local:SettingCard>
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Text="Type a shortcut such as PrintScreen, Ctrl+Shift+S or Alt+F9, then press Enter or leave the box. Ordinary keys need Ctrl, Alt, Shift or Win. A change takes effect at once."
+                            TextWrapping="Wrap" />
+                        <Button
+                            Margin="0,8,0,0"
+                            Command="{x:Bind ViewModel.ResetHotkeysCommand}"
+                            Content="Reset to defaults" />
+                    </StackPanel>
+
+                    <!-- Capture -->
+                    <StackPanel
+                        x:Name="CapturePanel"
+                        Spacing="4"
+                        Visibility="Collapsed">
+                        <local:SettingCard Header="Include the mouse pointer" IsLocked="{x:Bind ViewModel.IsLocked('Capture.CaptureCursor'), Mode=OneWay}">
+                            <ToggleSwitch
+                                MinWidth="0"
+                                AutomationProperties.Name="Include the mouse pointer"
+                                IsOn="{x:Bind ViewModel.CaptureCursor, Mode=TwoWay}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="Waits this long after the hotkey before freezing the screen, in milliseconds. 0 captures at once."
+                            Error="{x:Bind ViewModel.ErrorFor('Capture.DelayMilliseconds'), Mode=OneWay}"
+                            Header="Delay before capture"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Capture.DelayMilliseconds'), Mode=OneWay}">
+                            <NumberBox
+                                Width="160"
+                                AutomationProperties.Name="Delay before capture in milliseconds"
+                                LargeChange="1000"
+                                Maximum="10000"
+                                Minimum="0"
+                                SmallChange="250"
+                                SpinButtonPlacementMode="Inline"
+                                Value="{x:Bind ViewModel.DelayMilliseconds, Mode=TwoWay}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="A zoomed view next to the pointer while you select. Press M during a selection to toggle it."
+                            Header="Show the magnifier"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Capture.ShowMagnifier'), Mode=OneWay}">
+                            <ToggleSwitch
+                                MinWidth="0"
+                                AutomationProperties.Name="Show the magnifier"
+                                IsOn="{x:Bind ViewModel.ShowMagnifier, Mode=TwoWay}" />
+                        </local:SettingCard>
+
+                        <local:SettingCard
+                            Description="The pointer position and the size of the selection, in pixels."
+                            Header="Show coordinates and size"
+                            IsLocked="{x:Bind ViewModel.IsLocked('Capture.ShowCoordinates'), Mode=OneWay}">
+                            <ToggleSwitch
+                                MinWidth="0"
+                                AutomationProperties.Name="Show coordinates and size"
+                                IsOn="{x:Bind ViewModel.ShowCoordinates, Mode=TwoWay}" />
+                        </local:SettingCard>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</Window>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- ScrubShot icon, simplified variant for 16, 20 and 24 px. Same bubbles, gradients and outline as scrubshot.svg, enlarged with a thicker outline. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="gLarge" cx="0.38" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#0E9F8E"/>
+    </radialGradient>
+    <radialGradient id="gMid" cx="0.38" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </radialGradient>
+    <radialGradient id="gSmall" cx="0.38" cy="0.35" r="0.72">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Large bubble, top-left -->
+  <circle cx="92" cy="92" r="74" fill="url(#gLarge)" stroke="#0D4A45" stroke-width="20"/>
+  <circle cx="64" cy="64" r="16" fill="#FFFFFF"/>
+
+  <!-- Medium bubble, right -->
+  <circle cx="180" cy="132" r="56" fill="url(#gMid)" stroke="#0D4A45" stroke-width="20"/>
+  <circle cx="160" cy="112" r="16" fill="#FFFFFF"/>
+
+  <!-- Small bubble, bottom, tucked under the medium -->
+  <circle cx="170" cy="194" r="46" fill="url(#gSmall)" stroke="#0D4A45" stroke-width="20"/>
+  <circle cx="160" cy="176" r="16" fill="#FFFFFF"/>
+</svg>

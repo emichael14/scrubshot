@@ -451,3 +451,6 @@ settings.json
 # Local-only Claude Code notes and the working copy of the build spec
 CLAUDE.local.md
 .local/
+
+# Private copy of the build spec (the public version is SPEC.md)
+CLAUDE.local-spec.md
