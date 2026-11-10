@@ -32,12 +32,25 @@ public interface ISettingsStore
 /// could not be set aside, is set aside before the next save rather than overwritten; if that fails the save
 /// throws. A file written by a newer schema is copied to <c>settings.v{N}.json</c> before this build first
 /// rewrites it.
+/// <para>
+/// A save writes differences, not the whole document (D-048): the store keeps the document as it was found in
+/// the file and replaces only the settings whose value differs from what was loaded. A setting the file never
+/// mentioned stays unmentioned, so a default that changes in a later version still reaches this user; a value
+/// the file spelled in a way this version resets, and properties this version does not know, stay as written.
+/// Comments are not kept. With no usable file the document starts empty and holds only what differs from the
+/// defaults.
+/// </para>
 /// </remarks>
 public sealed class JsonSettingsStore : ISettingsStore
 {
     private readonly ILogger _logger;
     private bool _protectExistingFile;
     private int? _newerSchemaVersion;
+
+    // The document as the file had it (before normalization) and the settings that document meant when loaded.
+    // Null raw means there is no usable file content to preserve.
+    private JsonObject? _raw;
+    private ScrubShotSettings? _loaded;
 
     public JsonSettingsStore(string filePath, ILogger? logger = null)
     {
@@ -57,6 +70,8 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         _protectExistingFile = false;
         _newerSchemaVersion = null;
+        _raw = null;
+        _loaded = null;
 
         if (!File.Exists(FilePath))
         {
@@ -89,6 +104,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             return ScrubShotSettings.Defaults;
         }
 
+        var raw = (JsonObject)root.DeepClone();
         var reset = SettingsDocument.Normalize(root);
         if (reset > 0)
         {
@@ -115,6 +131,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         var migrated = Migrate(loaded);
+        _raw = raw;
+        _loaded = migrated;
         Log.SettingsLoaded(_logger, migrated.SchemaVersion, usedDefaults: false);
         return migrated;
     }
@@ -127,14 +145,21 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             System.IO.Directory.CreateDirectory(Directory);
             PreserveExistingFileIfNeeded();
+            var document = BuildDocument(settings);
 
             using (var stream = File.Open(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                JsonSerializer.Serialize(stream, settings with { SchemaVersion = ScrubShotSettings.CurrentSchemaVersion }, SettingsJson.Options);
+                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                {
+                    document.WriteTo(writer, SettingsJson.Options);
+                }
+
                 stream.Flush(flushToDisk: true);
             }
 
             File.Move(tempPath, FilePath, overwrite: true);
+            _raw = document;
+            _loaded = settings with { SchemaVersion = ScrubShotSettings.CurrentSchemaVersion };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -143,6 +168,50 @@ public sealed class JsonSettingsStore : ISettingsStore
             throw;
         }
     }
+
+    /// <summary>
+    /// The document to write: the file's own content with only the settings that differ from what was loaded
+    /// replaced. Names are matched without regard to case, as loading does, so "output" in a hand-written file
+    /// does not gain a second "Output".
+    /// </summary>
+    private JsonObject BuildDocument(ScrubShotSettings settings)
+    {
+        var document = _raw is null ? new JsonObject() : (JsonObject)_raw.DeepClone();
+        var baseline = ToNode(_loaded ?? ScrubShotSettings.Defaults);
+        var wanted = ToNode(settings);
+
+        SetProperty(document, SettingsDocument.SchemaVersionProperty, JsonValue.Create(ScrubShotSettings.CurrentSchemaVersion));
+        foreach (var definition in SettingsSchema.All)
+        {
+            var (section, name) = SettingsDocument.Split(definition.Path);
+            var value = wanted[section]![name];
+            if (JsonNode.DeepEquals(value, baseline[section]![name]))
+            {
+                continue; // unchanged: whatever the file says about it, or does not say, stays
+            }
+
+            var sectionName = FindProperty(document, section) ?? section;
+            if (document[sectionName] is not JsonObject sectionObject)
+            {
+                sectionObject = [];
+                document[sectionName] = sectionObject;
+            }
+
+            SetProperty(sectionObject, name, value?.DeepClone());
+        }
+
+        return document;
+    }
+
+    private static JsonObject ToNode(ScrubShotSettings settings) =>
+        JsonSerializer.SerializeToNode(settings, SettingsJson.Options)?.AsObject()
+        ?? throw new InvalidOperationException("Settings serialized to null.");
+
+    private static string? FindProperty(JsonObject target, string name) =>
+        target.Select(property => property.Key).FirstOrDefault(key => string.Equals(key, name, StringComparison.OrdinalIgnoreCase));
+
+    private static void SetProperty(JsonObject target, string name, JsonNode? value) =>
+        target[FindProperty(target, name) ?? name] = value;
 
     /// <summary>Upgrades older documents. Schema 1 is the first; newer documents are read as-is (unknown properties ignored).</summary>
     private static ScrubShotSettings Migrate(ScrubShotSettings loaded) =>

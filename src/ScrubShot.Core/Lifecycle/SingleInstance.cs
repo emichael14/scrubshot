@@ -37,7 +37,12 @@ public sealed class SingleInstance : IDisposable
     /// Subscribe to <see cref="ActivationRequested"/> and then call <see cref="Start"/>; a signal that arrives before
     /// that is kept by the event and delivered on start.
     /// </summary>
-    public static SingleInstance? TryAcquire(string name = DefaultName)
+    /// <param name="name">Base name of the mutex and event.</param>
+    /// <param name="beforeSignal">
+    /// Runs in the losing process just before it signals the running instance, for example to pass on the right to
+    /// take the foreground. A failure here never stops the signal.
+    /// </param>
+    public static SingleInstance? TryAcquire(string name = DefaultName, Action? beforeSignal = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -58,6 +63,15 @@ public sealed class SingleInstance : IDisposable
         if (!owned)
         {
             mutex.Dispose();
+            try
+            {
+                beforeSignal?.Invoke();
+            }
+            catch (Exception)
+            {
+                // Best effort; the running instance is still signalled.
+            }
+
             using (activate)
             {
                 activate.Set();

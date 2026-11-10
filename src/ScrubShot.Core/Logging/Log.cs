@@ -151,4 +151,8 @@ public static partial class Log
     [LoggerMessage(EventId = 1403, Level = LogLevel.Warning,
         Message = "Launch-at-startup registration not applied: {Result} (HRESULT {HResult}).")]
     public static partial void StartupRegistrationFailed(ILogger logger, Core.Lifecycle.StartupSyncResult result, int hResult);
+
+    [LoggerMessage(EventId = 1404, Level = LogLevel.Warning,
+        Message = "The tray icon could not be added (attempt {Attempt}, HRESULT {HResult}).")]
+    public static partial void TrayIconFailed(ILogger logger, int attempt, int hResult);
 }

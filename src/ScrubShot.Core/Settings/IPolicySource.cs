@@ -9,7 +9,26 @@ namespace ScrubShot.Core.Settings;
 /// </summary>
 public interface IPolicySource
 {
+    /// <summary>
+    /// Returns every policy value, or throws <see cref="PolicyReadException"/> when the policy could not be read
+    /// completely. An empty result means "no policy" and nothing else: a source must never return a partial set,
+    /// because a missing value would silently unlock the setting it was meant to fix.
+    /// </summary>
     IReadOnlyDictionary<string, object> Read();
+}
+
+/// <summary>
+/// The policy could not be read completely (access denied, the key was being rewritten by a policy refresh, a value
+/// vanished between enumeration and read). The caller keeps the locks it already knows and tries again later.
+/// </summary>
+public sealed class PolicyReadException : Exception
+{
+    public PolicyReadException(Exception cause)
+        : base("Policy could not be read completely.", cause)
+    {
+        ArgumentNullException.ThrowIfNull(cause);
+        HResult = cause.HResult;
+    }
 }
 
 /// <summary>Policy values held in memory. Used by tests and when a hive is absent.</summary>
