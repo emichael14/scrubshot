@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ScrubShot.Capture\ScrubShot.Capture.csproj" />
+    <ProjectReference Include="..\..\src\ScrubShot.Output\ScrubShot.Output.csproj" />
   </ItemGroup>
 
 </Project>

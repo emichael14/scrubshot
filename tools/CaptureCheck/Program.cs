@@ -13,11 +13,12 @@ if (args.Length == 0 || args[0] is "-h" or "--help")
 {
     Console.Error.WriteLine("CaptureCheck <outputFolder> [--cursor] [--overlay region|window] [--no-confirm-on-release]");
     Console.Error.WriteLine("CaptureCheck --hotkeys [seconds]");
-    Console.Error.WriteLine("CaptureCheck --flow region|window|full|monitor|repeat <outputFolder> [monitorIndex] [--busy]");
+    Console.Error.WriteLine("CaptureCheck --flow region|window|full|monitor|repeat <outputFolder> [monitorIndex] [--busy] [--output copy|save|both [png|jpg]] [--recopy]");
     Console.Error.WriteLine("  Prints the monitor table, captures the virtual screen and writes composite.png plus monitor-N.png.");
     Console.Error.WriteLine("  --overlay shows the selection overlay on the capture and writes selection.png for the confirmed region.");
     Console.Error.WriteLine("  --hotkeys registers the default hotkeys, prints each binding's status and reports presses for the given seconds (default 10).");
-    Console.Error.WriteLine("  --flow runs the CaptureCoordinator end to end and writes flow.png; --busy fires a second request while the first runs.");
+    Console.Error.WriteLine("  --flow runs the CaptureCoordinator end to end and writes flow.png; --busy fires a second request while the first runs;");
+    Console.Error.WriteLine("  --output runs the real OutputSink instead (clipboard and/or a file in the folder, history exclusion on); --recopy re-copies afterwards.");
     return 2;
 }
 
@@ -64,7 +65,32 @@ if (args[0] == "--flow")
         _ => throw new ArgumentException($"Unknown flow mode '{args[1]}'."),
     };
 
-    var sink = new PngFolderSink(folder);
+    var outputIndex = Array.IndexOf(args, "--output");
+    ScrubShot.Output.OutputSink? realSink = null;
+    PngFolderSink? pngSink = null;
+    ScrubShot.Capture.Coordination.ICaptureSink sink;
+    if (outputIndex >= 0 && outputIndex + 1 < args.Length)
+    {
+        var action = args[outputIndex + 1].ToLowerInvariant() switch
+        {
+            "copy" => ScrubShot.Core.Settings.DefaultCaptureAction.Copy,
+            "save" => ScrubShot.Core.Settings.DefaultCaptureAction.Save,
+            _ => ScrubShot.Core.Settings.DefaultCaptureAction.CopyAndSave,
+        };
+        var format = outputIndex + 2 < args.Length && args[outputIndex + 2].Equals("jpg", StringComparison.OrdinalIgnoreCase)
+            ? ScrubShot.Core.Settings.ImageFormat.Jpg
+            : ScrubShot.Core.Settings.ImageFormat.Png;
+        var outputSettings = new ScrubShot.Core.Settings.OutputSettings { DefaultAction = action, SaveFolder = folder, Format = format };
+        realSink = new ScrubShot.Output.OutputSink(ScrubShot.Output.ClipboardWriter.Instance, ScrubShot.Output.CaptureSaver.Instance, () => outputSettings);
+        realSink.Completed += r => Console.WriteLine($"Output: copied={r.Copied} excludedFromHistory={r.ExcludedFromHistory} saved={r.SavedPath ?? "no"}");
+        sink = realSink;
+    }
+    else
+    {
+        pngSink = new PngFolderSink(folder);
+        sink = pngSink;
+    }
+
     var coordinator = new ScrubShot.Capture.Coordination.CaptureCoordinator(
         new GdiScreenCapturer(),
         MonitorEnumerator.GetLayout,
@@ -83,10 +109,17 @@ if (args[0] == "--flow")
     var outcome = await first;
     flowWatch.Stop();
     Console.WriteLine($"Flow {request.Mode}: {outcome} in {flowWatch.ElapsedMilliseconds} ms; last region: {coordinator.LastRegion?.ToString() ?? "none"}");
-    if (sink.Last is { } last)
+    if (pngSink?.Last is { } last)
     {
         Console.WriteLine($"flow.png: {last.Width}x{last.Height} from {last.ScreenRect}");
     }
+
+    if (realSink is not null && args.Contains("--recopy"))
+    {
+        Console.WriteLine($"Recopy last: {await realSink.RecopyLastAsync()} (clipboard open attempts: {ScrubShot.Output.ClipboardWriter.Instance.LastOpenAttempts})");
+    }
+
+    realSink?.Dispose();
 
     return outcome == ScrubShot.Core.Coordination.CaptureOutcome.Completed ? 0 : 3;
 }
